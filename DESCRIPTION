@@ -12,3 +12,5 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports: 
     magrittr
+URL: https://github.com/GlobalFishingWatch/forcedlabor
+BugReports: https://github.com/GlobalFishingWatch/forcedlabor/issues
