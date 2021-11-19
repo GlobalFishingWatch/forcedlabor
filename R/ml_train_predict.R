@@ -67,6 +67,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 #' @importFrom workflows workflow
 #' @importFrom workflows add_model
 #' @importFrom workflows add_recipe
+#' @import tidyselect
 #'
 #' @export
 #'
