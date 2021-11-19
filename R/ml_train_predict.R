@@ -72,6 +72,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 #' @importFrom workflows add_model
 #' @importFrom workflows add_recipe
 #' @importFrom yardstick metric_set
+#' @importFrom yardstick roc_auc
 #' @import tidyselect
 #'
 #' @export
@@ -132,7 +133,7 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all, #common_see
                   # won't use it for anything
                   # Doing ROC means that the predictions this outputs will be
                   # the raw numeric, rather than class
-                  metrics = yardstick::metric_set(roc_auc),
+                  metrics = yardstick::metric_set(yardstick::roc_auc),
                   control = tune::control_resamples(save_pred = TRUE)) %>%
         dplyr::select(id,.predictions) %>%
         tidyr::unnest(.predictions)%>%
