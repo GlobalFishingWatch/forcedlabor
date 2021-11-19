@@ -82,12 +82,12 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all, #common_see
 
   # Setting up the parallelization
   if (parallel_plan == "multicore"){
-    future::plan(multicore, workers = parallel::detectCores() - free_cores, gc = TRUE)
+    future::plan(future:::multicore, workers = parallel::detectCores() - free_cores, gc = TRUE)
     # the garbage collector will run automatically (and asynchronously) on the
     # workers to minimize the memory footprint of the worker.
   }else if (parallel_plan == "psock"){
     cl <- parallelly::makeClusterPSOCK(availableCores() - free_cores)
-    future::plan(cluster, workers = cl)
+    future::plan(future:::cluster, workers = cl)
   }else{
     utils::globalVariables("multisession")
     future::plan(future:::multisession, workers = parallel::detectCores() - free_cores, gc = TRUE)
