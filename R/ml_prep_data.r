@@ -42,14 +42,14 @@ gear_correction <- function(data){
 #' length_m (double), ais_type (character), event_ais_year (integer),
 #' fl_event_id (integer), known_offender (double), known_non_offender (integer),
 #' possible_offender (double)
-#' @param tidy_data : data frame of AIS. Needs to have the same columns as fl_data.
-#' @param gears_interest : vector of character elements with names of the gears of interest.
-#' @param vars_to_factor : vector of character elements with names of columns to convert
+#' @param tidy_data data frame of AIS. Needs to have the same columns as fl_data.
+#' @param gears_interest vector of character elements with names of the gears of interest.
+#' @param vars_to_factor vector of character elements with names of columns to convert
 #' from character to factor. They have to be columns existing in fl_data and tidy_data.
 #' @param vars_remove: vector of character elements with names of columns to remove from tidy_data.
 #' @return list with 2 elements:
 #' holdout_set : data frame with AIS info from offenders before/after
-#' the year of offense, potential offenders and known non offenders
+#' the year of offense, potential offenders and known non offenders;
 #' training set : data frame with AIS info from offenders during the year
 #' of offense, and unlabeled cases
 #'

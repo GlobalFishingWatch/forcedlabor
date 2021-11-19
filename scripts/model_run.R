@@ -129,7 +129,7 @@ bag_runs <- common_seed_tibble %>%
   mutate(counter = dplyr::row_number())
 
 ## parallelization strategy
-parallel_plan <- "multicore" # multisession if running from RStudio, or
+parallel_plan <- "multisession" #"multicore" # multisession if running from RStudio, or
 # multicore if from Linux, Mac and plain R, or
 # psock if multisession is not working well and you need to try something else
 free_cores <- 1 # add more if you need to do many things at the same time
@@ -145,3 +145,11 @@ cv_splits_all <- common_seed_tibble %>%
                    group = source_id,
                    v = num_folds)
   }))
+
+tictoc::tic()
+train_pred_proba <- ml_train_predict(training_df = training_df, fl_rec = fl_rec,
+                                     rf_spec = rf_spec, cv_splits_all = cv_splits_all, #common_seed_tibble,
+                                     # num_folds,
+                                     bag_runs = bag_runs, down_sample_ratio = down_sample_ratio, num_grid = 2,
+                                     parallel_plan = parallel_plan, free_cores = 4)
+tictoc::toc()

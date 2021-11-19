@@ -14,6 +14,15 @@ Imports:
     magrittr,
     dplyr,
     forcats,
-    tidyselect
+    furrr,
+    future,
+    parallel,
+    parallelly,
+    purrr,
+    themis,
+    tidyr,
+    tidyselect,
+    tune,
+    workflows
 URL: https://github.com/GlobalFishingWatch/forcedlabor
 BugReports: https://github.com/GlobalFishingWatch/forcedlabor/issues

@@ -19,11 +19,11 @@ length_m (double), ais_type (character), event_ais_year (integer),
 fl_event_id (integer), known_offender (double), known_non_offender (integer),
 possible_offender (double)}
 
-\item{tidy_data}{: data frame of AIS. Needs to have the same columns as fl_data.}
+\item{tidy_data}{data frame of AIS. Needs to have the same columns as fl_data.}
 
-\item{gears_interest}{: vector of character elements with names of the gears of interest.}
+\item{gears_interest}{vector of character elements with names of the gears of interest.}
 
-\item{vars_to_factor}{: vector of character elements with names of columns to convert
+\item{vars_to_factor}{vector of character elements with names of columns to convert
 from character to factor. They have to be columns existing in fl_data and tidy_data.}
 
 \item{vars_remove:}{vector of character elements with names of columns to remove from tidy_data.}
@@ -31,7 +31,7 @@ from character to factor. They have to be columns existing in fl_data and tidy_d
 \value{
 list with 2 elements:
 holdout_set : data frame with AIS info from offenders before/after
-the year of offense, potential offenders and known non offenders
+the year of offense, potential offenders and known non offenders;
 training set : data frame with AIS info from offenders during the year
 of offense, and unlabeled cases
 }
