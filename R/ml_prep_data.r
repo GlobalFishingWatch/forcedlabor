@@ -63,7 +63,7 @@ ml_prep_data <- function(fl_data = fl_df$data,
                            tidy_data = alltogether_tidy$data ,
                            gears_interest, vars_to_factor, vars_remove){
 
-  utils::globalVariables("where")
+  # utils::globalVariables("where", ".")
 
   # fl events with gear correction
   fl_gear <- fl_data %>%
