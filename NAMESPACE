@@ -3,6 +3,7 @@
 export("%>%")
 export(gear_correction)
 export(ml_prep_data)
+export(ml_train_predict)
 export(ml_training)
 import(dplyr)
 import(tidyselect)
