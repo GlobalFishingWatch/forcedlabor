@@ -66,7 +66,7 @@ training_df <- data_preprocess$training_set
 readr::write_csv(training_df,here::here("data","training_df.csv"))
 
 training_df <- training_df %>%
-  select(-all_of(vars_remove))
+  dplyr::select(-all_of(vars_remove))
 
 prediction_df <- data_preprocess$holdout_set
 readr::write_csv(prediction_df,here::here("data","holdout_df.csv"))
@@ -117,7 +117,7 @@ down_sample_ratio <- 1 # downsampling ratio
 # We'll vary this to get confidence intervals
 # Eventually we can crank this up (16,32,64), but keep it to 2 for now for testing
 num_common_seeds <- 4
-common_seed_tibble <- tibble(common_seed = seq(1:num_common_seeds)*101)
+common_seed_tibble <- tibble::tibble(common_seed = seq(1:num_common_seeds)*101)
 
 # Run all common_seeds
 bag_runs <- common_seed_tibble %>%
@@ -126,10 +126,10 @@ bag_runs <- common_seed_tibble %>%
   # Will use different random seeds when implementing recipes for each bag
   dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) %>%
   # counter
-  mutate(counter = dplyr::row_number())
+  dplyr::mutate(counter = dplyr::row_number())
 
 ## parallelization strategy
-parallel_plan <- "multisession" #"multicore" # multisession if running from RStudio, or
+parallel_plan <- "multicore" # multisession if running from RStudio, or
 # multicore if from Linux, Mac and plain R, or
 # psock if multisession is not working well and you need to try something else
 free_cores <- 1 # add more if you need to do many things at the same time
