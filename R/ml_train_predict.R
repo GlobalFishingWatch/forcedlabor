@@ -15,7 +15,7 @@
 #' or psock - this last one may need calling libraries inside)
 #' @param free_cores number of free cores to leave out of parallelization
 #' @export
-#'
+#' @return data frame with confidence scores of being an offender
 
 
 ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,

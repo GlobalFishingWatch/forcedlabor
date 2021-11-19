@@ -40,6 +40,9 @@ or psock - this last one may need calling libraries inside)}
 
 \item{free_cores}{number of free cores to leave out of parallelization}
 }
+\value{
+data frame with confidence scores of being an offender
+}
 \description{
 Training and predicting with PU learning
 Ideally do all ml_training, ml_hyperpar, ml_training_Frank_2, dedpul, assessments
