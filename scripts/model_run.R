@@ -1,4 +1,6 @@
 
+# library(magrittr)
+
 ###################### data pre-processing ##########################
 
 # Establish connection to BigQuery project
@@ -63,13 +65,13 @@ data_preprocess <- ml_prep_data(fl_data = fl_df$data,
 
 training_df <- data_preprocess$training_set
 # save training_df for making summary figure (needs the fl indicators)
-readr::write_csv(training_df,here::here("data","training_df.csv"))
+# readr::write_csv(training_df,here::here("data","training_df.csv"))
 
 training_df <- training_df %>%
   dplyr::select(-all_of(vars_remove))
 
 prediction_df <- data_preprocess$holdout_set
-readr::write_csv(prediction_df,here::here("data","holdout_df.csv"))
+# readr::write_csv(prediction_df,here::here("data","holdout_df.csv"))
 
 
 ################## writing the recipe ##########################################

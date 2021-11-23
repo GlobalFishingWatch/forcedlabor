@@ -73,6 +73,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 #' @importFrom workflows add_recipe
 #' @importFrom yardstick metric_set
 #' @importFrom yardstick roc_auc
+#' @import recipes
 #' @import tidyselect
 #'
 #' @export
