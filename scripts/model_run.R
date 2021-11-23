@@ -89,9 +89,9 @@ fl_rec <- recipes::recipe(known_offender ~ .,  # modeling known_offender using e
               year_focus, num_years, past_ais_year,
               event_ais_year, new_role = "control") %>%
   # Remove near-zero variance numeric predictors
-  recipes::step_nzv(all_predictors())  %>%  # almost zero variance removal (I don't think we have those though)
+  recipes::step_nzv(recipes::all_predictors())  %>%  # almost zero variance removal (I don't think we have those though)
   # Remove numeric predictors that have correlation greater the 75%
-  recipes::step_corr(all_numeric(), threshold = 0.75)
+  recipes::step_corr(recipes::all_numeric(), threshold = 0.75)
 
 
 ######### specifying the model #################################################
@@ -149,7 +149,7 @@ cv_splits_all <- common_seed_tibble %>%
   }))
 
 tictoc::tic()
-train_pred_proba <- ml_train_predict(training_df = training_df, fl_rec = fl_rec,
+train_pred_proba <- ml_training(training_df = training_df, fl_rec = fl_rec,
                                      rf_spec = rf_spec, cv_splits_all = cv_splits_all, #common_seed_tibble,
                                      # num_folds,
                                      bag_runs = bag_runs, down_sample_ratio = down_sample_ratio, num_grid = 2,

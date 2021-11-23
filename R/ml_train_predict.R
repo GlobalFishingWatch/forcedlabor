@@ -1,36 +1,36 @@
-#' Training and predicting with PU learning
-#' Ideally do all ml_training, ml_hyperpar, ml_training_Frank_2, dedpul, assessments
+#' #' Training and predicting with PU learning
+#' #' Ideally do all ml_training, ml_hyperpar, ml_training_Frank_2, dedpul, assessments
+#' #'
+#' #' @param training_df data frame. training set.
+#' #' @param fl_rec recipe
+#' #' @param rf_spec model specifications
+#' #' @param cv_splits_all tibble containing tibbles of cross-validation splits. 1 cv split per common_seed
+#' #' @param bag_runs data frame with the ID of each bag for each common seed and
+#' #' the actual seed using to downsample in each bag
+#' #' @param down_sample_ratio down sampling ratio for the smaller class (offenders);
+#' #' to add to the recipe in each bag
+#' #' @param num_grid number of grid random values for combinations of
+#' #' hyperparameters per bag
+#' #' @param parallel_plan type of parallelization to run (multicore, multisession
+#' #' or psock - this last one may need calling libraries inside)
+#' #' @param free_cores number of free cores to leave out of parallelization
+#' #' @export
+#' #' @return data frame with confidence scores of being an offender
 #'
-#' @param training_df data frame. training set.
-#' @param fl_rec recipe
-#' @param rf_spec model specifications
-#' @param cv_splits_all tibble containing tibbles of cross-validation splits. 1 cv split per common_seed
-#' @param bag_runs data frame with the ID of each bag for each common seed and
-#' the actual seed using to downsample in each bag
-#' @param down_sample_ratio down sampling ratio for the smaller class (offenders);
-#' to add to the recipe in each bag
-#' @param num_grid number of grid random values for combinations of
-#' hyperparameters per bag
-#' @param parallel_plan type of parallelization to run (multicore, multisession
-#' or psock - this last one may need calling libraries inside)
-#' @param free_cores number of free cores to leave out of parallelization
-#' @export
-#' @return data frame with confidence scores of being an offender
-
-
-ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
-                             bag_runs, down_sample_ratio = 1, num_grid = 5,
-                             parallel_plan = "multicore", free_cores = 1){
-
-
-  train_pred_proba <- ml_training(training_df, fl_rec, rf_spec, cv_splits_all,
-                                  bag_runs, down_sample_ratio, num_grid,
-                                  parallel_plan, free_cores)
-
-
-  return(train_pred_proba)
-
-}
+#'
+#' ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
+#'                              bag_runs, down_sample_ratio = 1, num_grid = 5,
+#'                              parallel_plan = "multicore", free_cores = 1){
+#'
+#'
+#'   train_pred_proba <- ml_training(training_df, fl_rec, rf_spec, cv_splits_all,
+#'                                   bag_runs, down_sample_ratio, num_grid,
+#'                                   parallel_plan, free_cores)
+#'
+#'
+#'   return(train_pred_proba)
+#'
+#' }
 
 
 #' Trains machine learning (RF) models:
