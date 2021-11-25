@@ -168,3 +168,22 @@ tictoc::tic()
 best_hyperparameters <- ml_hyperpar(train_pred_proba)
 # write_csv(best_hyperparameters,here::here("outputs/stats", "best_hyperpar.csv"))
 tictoc::toc()
+
+
+####### Frankenstraining ########################################
+
+tic()
+cv_model_res <- ml_frankenstraining(training_df = training_df,
+                                    fl_rec = fl_rec,
+                                    rf_spec = rf_spec,
+                                    cv_splits_all = cv_splits_all,
+                                    bag_runs = bag_runs,
+                                    down_sample_ratio = down_sample_ratio,
+                                    # rf_feature_selection_threshold = rf_feature_selection_threshold,
+                                    # rf_specs_imp = rf_specs_imp,
+                                    parallel_plan = "multicore",
+                                    free_cores = 4,
+                                    best_hyperparameters = best_hyperparameters,
+                                    prediction_df = prediction_df,
+                                    run_dalex = TRUE)
+toc()
