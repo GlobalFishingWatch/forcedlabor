@@ -2,6 +2,7 @@
 
 export("%>%")
 export(gear_correction)
+export(ml_hyperpar)
 export(ml_prep_data)
 export(ml_training)
 import(dplyr)

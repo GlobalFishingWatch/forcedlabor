@@ -154,3 +154,49 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all, #common_see
 
   return(train_pred_proba)
 }
+
+
+#' Get best hyperparameter combination for each common seed after ML training
+#'
+#' @param train_pred_proba data frame of train cross-validated datasets with several bags,
+#' it must have columns:
+#' .pred_1 : probability of being an offender;
+#' bag: bag ID;
+#' known_offender: 0 if not, 1 if yes;
+#' .row: row ID
+#' common_seed: common seed to generate bags
+#' @return data frame of best hyperparameter combinations per common seed
+#'
+#' @importFrom yardstick roc_auc
+#' @import dplyr
+#'
+#' @export
+#'
+
+ml_hyperpar <- function(train_pred_proba){
+
+  roc_auc_results <- train_pred_proba %>%
+    dplyr::group_by(dplyr::across(-c(.pred_1,bag,known_offender,.row)))  %>%
+    yardstick::roc_auc(truth = known_offender,
+            .pred_1) %>%
+    dplyr::ungroup() %>% # getting auc per hyperparameter combination
+    # auc because it's not corrupted by the conditions of our data
+    # now we need to get stats across folds per hyperparameter combination
+    dplyr::group_by(dplyr::across(-c(id,.estimate))) %>%
+    # Get mean, min of performance across folds for each hyperparameter
+    # Will get NA if fold contains NAs or NaNs
+    dplyr::summarize(mean_performance = mean(.estimate),
+              min_performance = min(.estimate)) %>%
+    dplyr::ungroup()
+
+  # now we need to find the best hyperparameters using the best mean auc per common_seed
+  best_hyperparameters <- roc_auc_results %>%
+    dplyr::arrange(dplyr::desc(mean_performance)) %>%
+    dplyr::group_by(common_seed) %>%
+    dplyr::slice(1) %>%
+    dplyr::select(-.metric,-.estimator,-mean_performance,-min_performance) %>%
+    dplyr::ungroup()
+
+  return(list(auc_results = roc_auc_results, best_hyperparameters = best_hyperparameters))
+
+}

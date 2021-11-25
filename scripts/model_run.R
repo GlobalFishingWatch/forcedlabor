@@ -1,6 +1,9 @@
 
 # library(magrittr)
 
+# In the VM, I need to work in the same space (have a README about it)
+
+
 ###################### data pre-processing ##########################
 
 # Establish connection to BigQuery project
@@ -148,10 +151,20 @@ cv_splits_all <- common_seed_tibble %>%
                    v = num_folds)
   }))
 
+### FIRST TRAINING STAGE ###
+
 tictoc::tic()
 train_pred_proba <- ml_training(training_df = training_df, fl_rec = fl_rec,
                                      rf_spec = rf_spec, cv_splits_all = cv_splits_all, #common_seed_tibble,
                                      # num_folds,
                                      bag_runs = bag_runs, down_sample_ratio = down_sample_ratio, num_grid = 2,
-                                     parallel_plan = parallel_plan, free_cores = 4)
+                                     parallel_plan = parallel_plan, free_cores = free_cores)
+tictoc::toc()
+
+
+###### finding the optimal threshold and hyperparameters #########
+
+tictoc::tic()
+best_hyperparameters <- ml_hyperpar(train_pred_proba)
+# write_csv(best_hyperparameters,here::here("outputs/stats", "best_hyperpar.csv"))
 tictoc::toc()
