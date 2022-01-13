@@ -12,7 +12,7 @@ con <- DBI::dbConnect(drv = bigrquery::bigquery(),
 # Deal with BQ data download error
 # See for reference: https://github.com/r-dbi/bigrquery/issues/395
 options(scipen = 20)
-query_path <- "./queries/"
+# query_path <- "./queries/"
 gfw_project <- "world-fishing-827"
 ### Loading offenders vessel-year dataset
 
@@ -184,6 +184,5 @@ cv_model_res <- ml_frankenstraining(training_df = training_df,
                                     parallel_plan = parallel_plan,
                                     free_cores = free_cores,
                                     best_hyperparameters = best_hyperparameters,
-                                    prediction_df = prediction_df,
-                                    run_dalex = FALSE)
+                                    prediction_df = prediction_df)
 tictoc::toc()

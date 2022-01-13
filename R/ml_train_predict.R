@@ -227,6 +227,8 @@ ml_hyperpar <- function(train_pred_proba){
 #' @importFrom parallelly makeClusterPSOCK
 #' @importFrom purrr map
 #' @importFrom purrr pluck
+#' @importFrom rsample analysis
+#' @importFrom rsample assessment
 #' @importFrom themis step_downsample
 #' @importFrom tune finalize_workflow
 #' @import dplyr
@@ -265,7 +267,7 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
     bag_runs %>%
     ###### changes ##########
   dplyr::mutate(
-    predictions = furrr::future_map(.x = counter, .f = function(x){
+    prediction_output = furrr::future_map(.x = counter, .f = function(x){
       fl_rec_down <- fl_rec %>%
         themis::step_downsample(known_offender,
                                 under_ratio = down_sample_ratio,
@@ -283,9 +285,9 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
       # extract analysis and assessment sets for those folds
       analysis_data <- cv_splits %>%
         dplyr::mutate(# Create analysis dataset based on CV folds
-          analysis = purrr::map(splits,~analysis(.x)),
+          analysis = purrr::map(splits,~rsample::analysis(.x)),
           # Create assessment dataset based on CV folds
-          assessment = purrr::map(splits,~assessment(.x))) %>%
+          assessment = purrr::map(splits,~rsample::assessment(.x))) %>%
         dplyr::select(-splits)
 
       # extract the optimal hyperpar values for that common seed

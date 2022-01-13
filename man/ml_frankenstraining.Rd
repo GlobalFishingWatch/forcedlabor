@@ -14,8 +14,7 @@ ml_frankenstraining(
   parallel_plan = "multicore",
   free_cores = 1,
   best_hyperparameters,
-  prediction_df,
-  run_dalex = TRUE
+  prediction_df
 )
 }
 \arguments{
