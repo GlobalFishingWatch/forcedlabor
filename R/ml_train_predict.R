@@ -242,8 +242,7 @@ ml_hyperpar <- function(train_pred_proba){
 ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                 bag_runs, down_sample_ratio,
                                 parallel_plan = "multicore", free_cores = 1,
-                                best_hyperparameters, prediction_df,
-                                run_dalex = TRUE){
+                                best_hyperparameters, prediction_df){
 
   # Setting up the parallelization
 
