@@ -18,6 +18,7 @@ Imports:
     future,
     parallel,
     parallelly,
+    parsnip,
     purrr,
     recipes,
     rsample,

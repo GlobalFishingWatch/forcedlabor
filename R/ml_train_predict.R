@@ -225,6 +225,7 @@ ml_hyperpar <- function(train_pred_proba){
 #' @importFrom parallel detectCores
 #' @importFrom parallel stopCluster
 #' @importFrom parallelly makeClusterPSOCK
+#' @importFrom parsnip fit
 #' @importFrom purrr map
 #' @importFrom purrr pluck
 #' @importFrom rsample analysis
@@ -291,7 +292,7 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
         dplyr::select(-splits)
 
       # extract the optimal hyperpar values for that common seed
-      best_hyperparameters_temp <- best_hyperparameters %>%
+      best_hyperparameters_temp <- best_hyperparameters$best_hyperparameters %>%
         dplyr::filter(common_seed == bag_runs$common_seed[x])
 
       # workflow
@@ -303,7 +304,7 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 
 
       predictions <- purrr::map(1:dim(analysis_data)[1], function(alpha){
-        model <- fit(flow, analysis_data$analysis[[alpha]]) #%>%
+        model <- parsnip::fit(flow, analysis_data$analysis[[alpha]]) #%>%
         results_internal <- predict(object = model, new_data = analysis_data$assessment[[alpha]], type = "prob") %>%
           dplyr::select(.pred_1) %>%
           dplyr::bind_cols(analysis_data$assessment[[alpha]][c("indID",
