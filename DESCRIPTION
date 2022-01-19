@@ -16,6 +16,7 @@ Imports:
     forcats,
     furrr,
     future,
+    ggplot2,
     KernSmooth,
     parallel,
     parallelly,

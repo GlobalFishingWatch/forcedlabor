@@ -27,6 +27,7 @@
 #' 10.1109/ICMLA51294.2020.00128.
 #'
 #' @importFrom purrr map_dbl
+#' @importFrom purrr map2_dbl
 #' @import dplyr
 #'
 #' @export
@@ -69,7 +70,12 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 
     }))
 
-  return(thresholds)
+  pred_assess <- predictions_set %>%
+    dplyr::left_join(thresholds, by = "common_seed")  %>%
+    dplyr::mutate(pred_class = purrr:map2_dbl(.pred_1,thres, function(x,y){
+      ifelse(x > y, 1, 0)}))
+
+  return(list(thresholds, pred_assess))
 
 }
 
