@@ -310,12 +310,12 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
           dplyr::bind_cols(analysis_data$assessment[[alpha]][c("indID",
                                                         "known_offender",
                                                         "possible_offender",
-                                                        "known_non_offender")]) %>%
+                                                        "known_non_offender", "event_ais_year")]) %>%
           dplyr::mutate(holdout = 0)
         results_fold <- predict(object = model, new_data = prediction_df, type = "prob") %>%
           dplyr::select(.pred_1) %>%
           dplyr::bind_cols(prediction_df[c("indID", "known_offender",
-                                    "possible_offender", "known_non_offender")]) %>%
+                                    "possible_offender", "known_non_offender", "event_ais_year")]) %>%
           dplyr::mutate(holdout = 1) %>%
           dplyr::bind_rows(results_internal)
 

@@ -186,3 +186,37 @@ cv_model_res <- ml_frankenstraining(training_df = training_df,
                                     best_hyperparameters = best_hyperparameters,
                                     prediction_df = prediction_df)
 tictoc::toc()
+
+####### Classification with dedpul ########################################
+
+tictoc::tic()
+classif_res <- ml_classification(data = cv_model_res, common_seed_tibble, steps = 1000,
+                              plotting = FALSE, filepath = NULL,
+                              threshold = seq(0,.99, by = 0.01), eps = 0.01)
+tictoc::toc()
+
+# Computes recall for assessment sets and specificity for holdout non offenders #
+
+perf_metrics <- ml_perf_metrics(data = classif_res,
+                                common_seed_tibble = common_seed_tibble)
+
+##### Prediction summary: Classification between seeds #####
+# This is info we can give to external collaborators
+
+pred_class_stats <- ml_pred_summary(data = classif_res,
+                                    num_common_seeds = num_common_seeds)
+
+# if we want to save everything together
+pred_stats_set <- training_df %>%
+  rbind.data.frame(prediction_df) %>%
+  dplyr::right_join(pred_class_stats, by = c("indID", "known_offender",
+                                             "possible_offender",
+                                             "known_non_offender",
+                                             "event_ais_year"))
+
+bigrquery::bq_table(project = "world-fishing-827",
+         table = "pred_stats_per_vessel_year_dev",
+         dataset = "prj_forced_labor") %>%
+  bigrquery::bq_table_upload(values = pred_stats_set,
+                  fields=bigrquery::as_bq_fields(pred_stats_set),
+                  write_disposition = "WRITE_TRUNCATE")

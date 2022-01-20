@@ -55,6 +55,8 @@ gear_correction <- function(data){
 #'
 #' @import dplyr
 #' @importFrom forcats fct_relevel
+#' @importFrom tidyselect all_of
+#' @importFrom forcats fct_relevel
 #'
 #' @export
 #'
@@ -126,28 +128,29 @@ ml_prep_data <- function(fl_data = fl_df$data,
   unlabeled_offenders <- rbind.data.frame(offenders_event, unlabeled_df) %>%
     dplyr::mutate_if(is.logical, as.numeric) %>%
     dplyr::mutate(source_id = ifelse(known_offender != 1,
-                              paste0("no_source_", row_number()),
+                              paste0("no_source_", dplyr::row_number()),
                               source_id)) %>%
     dplyr::mutate(fl_event_id = ifelse(known_offender != 1,
-                                paste0("no_fl_info_", row_number()),
+                                paste0("no_fl_info_", dplyr::row_number()),
                                 fl_event_id)) %>%
     dplyr::mutate_if(is.logical, as.numeric) %>%
-    dplyr::mutate_at(all_of(vars_to_factor), as.factor) %>%
+    dplyr::mutate_at(tidyselect::all_of(vars_to_factor), as.factor) %>%
     # Relevel to ensure model metrics are calculated properly
-    dplyr::mutate(known_offender = fct_relevel(known_offender,c("1","0")))%>%
+    dplyr::mutate(known_offender = forcats::fct_relevel(known_offender,c("1","0")))%>%
     # Everything needs to be numeric for DALEX
     dplyr::mutate(across(tidyselect:::where(is.integer),as.numeric)) %>%
     # adding vessel-year ID
     dplyr::mutate(indID = paste(ssvid,year,sep = "-"))
+
 
   # making a hold-out test set
 
   holdout_df <- rbind.data.frame(fl_out_offenders,
                                  fl_out_non_offenders,
                                  fl_out_possible_offenders) %>%
-    dplyr::select(-all_of(vars_remove)) %>%
+    dplyr::select(-tidyselect::all_of(vars_remove)) %>%
     dplyr::mutate_if(is.logical, as.numeric) %>%
-    dplyr::mutate_at(all_of(vars_to_factor), as.factor)%>%
+    dplyr::mutate_at(tidyselect::all_of(vars_to_factor), as.factor)%>%
     # Relevel to ensure model metrics are calculated properly
     dplyr::mutate(known_offender = forcats::fct_relevel(known_offender,c("1","0")))%>%
     # Everything needs to be numeric for DALEX

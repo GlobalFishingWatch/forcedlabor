@@ -35,7 +35,7 @@ needed}
 proportion of positives for a given threshold}
 }
 \value{
-calibrated thresholds based on the dedpul algorithm
+tibble with classification and calibrated thresholds used for them
 }
 \description{
 For each common seed and vessel-year, it computes a binary
