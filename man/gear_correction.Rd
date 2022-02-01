@@ -8,7 +8,8 @@ Will need updating with more offenders and non offenders data}
 gear_correction(data)
 }
 \arguments{
-\item{data}{data frame. Needs to have a gear (character) and ssvid (character) columns.}
+\item{data}{data frame. Needs to have a gear (character) and ssvid
+(character) columns.}
 }
 \value{
 data frame with corrected gears

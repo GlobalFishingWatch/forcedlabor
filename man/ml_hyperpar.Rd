@@ -7,8 +7,8 @@
 ml_hyperpar(train_pred_proba)
 }
 \arguments{
-\item{train_pred_proba}{data frame of train cross-validated datasets with several bags,
-it must have columns:
+\item{train_pred_proba}{data frame of train cross-validated datasets with
+several bags, it must have columns:
 .pred_1 : probability of being an offender;
 bag: bag ID;
 known_offender: 0 if not, 1 if yes;

@@ -24,20 +24,20 @@
 #' @export
 #'
 
-ml_perf_metrics <- function(data, common_seed_tibble){
+ml_perf_metrics <- function(data, common_seed_tibble) {
 
   recall_seed <- common_seed_tibble %>%
-    dplyr::mutate(recall_perf = purrr::map_dbl(common_seed, function(x){
+    dplyr::mutate(recall_perf = purrr::map_dbl(common_seed, function(x) {
       data %>%
         dplyr::filter(holdout == 0 & common_seed == x) %>%
         yardstick::recall(truth = factor(known_offender, levels = c(1, 0)),
-                          estimate = factor(pred_class, levels = c(1,0))) %>%
+                          estimate = factor(pred_class, levels = c(1, 0))) %>%
         dplyr::select(.estimate) %>%
         purrr::pluck(1)
     }))
 
   specif_seed <- common_seed_tibble %>%
-    dplyr::mutate(spec_perf = purrr::map_dbl(common_seed, function(x){
+    dplyr::mutate(spec_perf = purrr::map_dbl(common_seed, function(x) {
       data %>%
         dplyr::filter(holdout == 1 & known_non_offender == 1 &
                         event_ais_year == 1 & common_seed == x) %>%

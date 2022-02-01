@@ -1,7 +1,8 @@
 #' Gear manual correction
 #' Will need updating with more offenders and non offenders data
 #'
-#' @param data data frame. Needs to have a gear (character) and ssvid (character) columns.
+#' @param data data frame. Needs to have a gear (character) and ssvid
+#' (character) columns.
 #' @return data frame with corrected gears
 #'
 #' @importFrom dplyr mutate
@@ -9,7 +10,7 @@
 #' @export
 #'
 
-gear_correction <- function(data){
+gear_correction <- function(data) {
 
   data %>%
     # manually correct some gears
@@ -35,18 +36,24 @@ gear_correction <- function(data){
 }
 
 
-#' Preprocessing of offenders, possible offenders, non offenders and unlabeled data
+#' Preprocessing of offenders, possible offenders, non offenders and unlabeled
+#' data
 #'
-#' @param fl_data data frame of offenders. Needs to have columns such as: a gear (character),
+#' @param fl_data data frame of offenders. Needs to have columns such as: a gear
+#' (character),
 #' ssvid (character), engine_power_kw (double), tonnage_gt (double),
 #' length_m (double), ais_type (character), event_ais_year (integer),
 #' fl_event_id (integer), known_offender (double), known_non_offender (integer),
 #' possible_offender (double)
-#' @param tidy_data data frame of AIS. Needs to have the same columns as fl_data.
-#' @param gears_interest vector of character elements with names of the gears of interest.
-#' @param vars_to_factor vector of character elements with names of columns to convert
-#' from character to factor. They have to be columns existing in fl_data and tidy_data.
-#' @param vars_remove: vector of character elements with names of columns to remove from tidy_data.
+#' @param tidy_data data frame of AIS. Needs to have the same columns as
+#' fl_data.
+#' @param gears_interest vector of character elements with names of the gears
+#' of interest.
+#' @param vars_to_factor vector of character elements with names of columns to
+#' convert from character to factor. They have to be columns existing in fl_data
+#' and tidy_data.
+#' @param vars_remove: vector of character elements with names of columns to
+#' remove from tidy_data.
 #' @return list with 2 elements:
 #' holdout_set : data frame with AIS info from offenders before/after
 #' the year of offense, potential offenders and known non offenders;
@@ -62,10 +69,8 @@ gear_correction <- function(data){
 #'
 
 ml_prep_data <- function(fl_data = fl_df$data,
-                           tidy_data = alltogether_tidy$data ,
-                           gears_interest, vars_to_factor, vars_remove){
-
-  # utils::globalVariables("where", ".")
+                           tidy_data = alltogether_tidy$data,
+                           gears_interest, vars_to_factor, vars_remove) {
 
   # fl events with gear correction
   fl_gear <- fl_data %>%
@@ -73,12 +78,14 @@ ml_prep_data <- function(fl_data = fl_df$data,
     # keep only gears of interest
     dplyr::filter(gear %in% gears_interest) %>%
     # dropping NAs in engine_power_kw, tonnage_gt, length_m and ais_type
-    dplyr::filter(!is.na(engine_power_kw) & !is.na(tonnage_gt) & !is.na(length_m) & !is.na(ais_type))
+    dplyr::filter(!is.na(engine_power_kw) & !is.na(tonnage_gt) &
+                    !is.na(length_m) & !is.na(ais_type))
 
   fl_na_zero <- fl_gear %>%
     dplyr::select(tidyselect:::where(~ is.numeric(.x) && any(is.na(.x)))) %>%
-    apply(MARGIN = 2, function(x){ifelse(is.na(x), 0, x)})
-  fl_gear[,colnames(fl_na_zero)] <- fl_na_zero
+    apply(MARGIN = 2, function(x) {
+      ifelse(is.na(x), 0, x)})
+  fl_gear[, colnames(fl_na_zero)] <- fl_na_zero
 
 
   # fl events from years previous or after the event
@@ -105,19 +112,22 @@ ml_prep_data <- function(fl_data = fl_df$data,
     # keep only gears of interest
     dplyr::filter(gear %in% gears_interest) %>%
     # dropping NAs in engine_power_kw, tonnage_gt, length_m and ais_type
-    dplyr::filter(!is.na(engine_power_kw) & !is.na(tonnage_gt) & !is.na(length_m) & !is.na(ais_type))
+    dplyr::filter(!is.na(engine_power_kw) & !is.na(tonnage_gt) &
+                    !is.na(length_m) & !is.na(ais_type))
 
   tidy_na_zero <- tidy_gear %>%
     dplyr::select(tidyselect:::where(~ is.numeric(.x) && any(is.na(.x)))) %>%
-    apply(MARGIN = 2, function(x){ifelse(is.na(x), 0, x)})
+    apply(MARGIN = 2, function(x) {
+      ifelse(is.na(x), 0, x)})
 
-  tidy_gear[,colnames(tidy_na_zero)] <- tidy_na_zero
+  tidy_gear[, colnames(tidy_na_zero)] <- tidy_na_zero
 
   # now only the unlabeled
-  # this should have removed all of the known offenders, possible offenders and non offenders,
-  # before, during and after the events
+  # this should have removed all of the known offenders, possible offenders and
+  # non offenders, before, during and after the events
   unlabeled_df <- tidy_gear %>%
-    dplyr::mutate(sum_fl = known_offender + known_non_offender + possible_offender) %>%
+    dplyr::mutate(sum_fl = known_offender + known_non_offender +
+                    possible_offender) %>%
     dplyr::filter(sum_fl == 0) %>%
     dplyr::select(-sum_fl)
 
@@ -136,11 +146,12 @@ ml_prep_data <- function(fl_data = fl_df$data,
     dplyr::mutate_if(is.logical, as.numeric) %>%
     dplyr::mutate_at(tidyselect::all_of(vars_to_factor), as.factor) %>%
     # Relevel to ensure model metrics are calculated properly
-    dplyr::mutate(known_offender = forcats::fct_relevel(known_offender,c("1","0")))%>%
+    dplyr::mutate(known_offender = forcats::fct_relevel(known_offender,
+                                                        c("1", "0"))) %>%
     # Everything needs to be numeric for DALEX
-    dplyr::mutate(across(tidyselect:::where(is.integer),as.numeric)) %>%
+    dplyr::mutate(across(tidyselect:::where(is.integer), as.numeric)) %>%
     # adding vessel-year ID
-    dplyr::mutate(indID = paste(ssvid,year,sep = "-"))
+    dplyr::mutate(indID = paste(ssvid, year, sep = "-"))
 
 
   # making a hold-out test set
@@ -150,13 +161,14 @@ ml_prep_data <- function(fl_data = fl_df$data,
                                  fl_out_possible_offenders) %>%
     dplyr::select(-tidyselect::all_of(vars_remove)) %>%
     dplyr::mutate_if(is.logical, as.numeric) %>%
-    dplyr::mutate_at(tidyselect::all_of(vars_to_factor), as.factor)%>%
+    dplyr::mutate_at(tidyselect::all_of(vars_to_factor), as.factor) %>%
     # Relevel to ensure model metrics are calculated properly
-    dplyr::mutate(known_offender = forcats::fct_relevel(known_offender,c("1","0")))%>%
+    dplyr::mutate(known_offender = forcats::fct_relevel(known_offender,
+                                                        c("1", "0"))) %>%
     # Everything needs to be numeric for DALEX
-    dplyr::mutate(across(tidyselect:::where(is.integer),as.numeric)) %>%
+    dplyr::mutate(across(tidyselect:::where(is.integer), as.numeric)) %>%
     # adding vessel-year ID
-    dplyr::mutate(indID = paste(ssvid,year,sep = "-"))
+    dplyr::mutate(indID = paste(ssvid, year, sep = "-"))
 
 
   return(list(holdout_set = holdout_df,

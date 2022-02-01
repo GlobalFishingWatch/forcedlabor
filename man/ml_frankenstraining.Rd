@@ -22,20 +22,24 @@ ml_frankenstraining(
 
 \item{rf_spec}{model specifications}
 
-\item{cv_splits_all}{tibble containing tibbles of cross-validation splits (1 split per common seed)}
+\item{cv_splits_all}{tibble containing tibbles of cross-validation splits
+(1 split per common seed)}
 
 \item{bag_runs}{bags}
 
-\item{down_sample_ratio}{down sampling ratio for the predicted class to add to the recipe in each bag}
+\item{down_sample_ratio}{down sampling ratio for the predicted class to add
+to the recipe in each bag}
 
-\item{parallel_plan}{type of parallelization to run (multicore, multisession, or psock - this
-last one may need calling libraries inside)}
+\item{parallel_plan}{type of parallelization to run (multicore, multisession,
+or psock - this last one may need calling libraries inside)}
 
 \item{free_cores}{number of free cores to leave out of parallelization}
 
-\item{best_hyperparameters}{hyperparameters values that gave max auc for each common seed}
+\item{best_hyperparameters}{hyperparameters values that gave max auc for each
+common seed}
 
-\item{prediction_df}{hold-out data frame with possible offenders and non offenders to predict on}
+\item{prediction_df}{hold-out data frame with possible offenders and non
+offenders to predict on}
 
 \item{trainining_df}{training data frame}
 }
@@ -43,6 +47,6 @@ last one may need calling libraries inside)}
 an object with predicted values and fitted models
 }
 \description{
-For each bag seed, fit one random forest to each bag in each fold, and predict
-over the assessment set and the holdout set.
+For each bag seed, fit one random forest to each bag in each
+fold, and predict over the assessment set and the holdout set.
 }

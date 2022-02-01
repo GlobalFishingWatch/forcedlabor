@@ -35,13 +35,13 @@
 
 ml_classification <- function(data, common_seed_tibble, steps = 1000,
                               plotting = FALSE, filepath = NULL,
-                              threshold = seq(0,.99, by = 0.01), eps = 0.01){
+                              threshold = seq(0, .99, by = 0.01), eps = 0.01) {
 
 
   # first, checking if a good file name has been provided (the path exists)
   # only if plotting is TRUE
 
-  if (plotting == TRUE){
+  if (plotting == TRUE) {
     if (dir.exists(filepath) == FALSE)
       stop("The directory to save the plot does not exist.")
   }
@@ -53,10 +53,10 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 
   # getting calibrated thresholds based on the dedpul algorithm
   thresholds <- common_seed_tibble %>%
-    dplyr::mutate(thres = purrr::map_dbl(common_seed, function(x){
+    dplyr::mutate(thres = purrr::map_dbl(common_seed, function(x) {
       subavg_pred <- average_assessment_per_seed %>%
         dplyr::filter(common_seed == x)
-      if (plotting == TRUE){
+      if (plotting == TRUE) {
         filename <- paste0(filepath, paste0("D_alpha_common_seed_", x, ".png"))
       }else{
         filename <- NULL
@@ -72,7 +72,8 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 
   pred_class_seed <- predictions_set %>%
     dplyr::left_join(thresholds, by = "common_seed")  %>%
-    dplyr::mutate(pred_class = purrr::map2_dbl(pred_mean,thres, function(x,y){
+    dplyr::mutate(pred_class = purrr::map2_dbl(pred_mean,
+                                               thres, function(x, y) {
       ifelse(x > y, 1, 0)}))
 
   return(pred_class_seed)
@@ -98,16 +99,17 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 #' @export
 #'
 
-avg_confscore <- function(data){
+avg_confscore <- function(data) {
 
   confscore_df <- data %>%
-    dplyr::select(common_seed,prediction_output) %>%
-    tidyr::unnest(prediction_output) %>% # from having a list per cell to a tibble per cell
+    dplyr::select(common_seed, prediction_output) %>%
+    tidyr::unnest(prediction_output) %>% # from having a list per cell to a
+    # tibble per cell
     tidyr::unnest(prediction_output) %>% # everything is a regular tibble now
-    dplyr::group_by(dplyr::across(-.pred_1)) %>% # group by everything except .pred_1
-    # (only common_seed and indID actually matter but the other don't make a diff
-    # in the calculations and it's useful to have them for later)
-    dplyr::summarize(pred_mean = mean(.pred_1,na.rm=TRUE), .groups = "drop")
+    dplyr::group_by(dplyr::across(-.pred_1)) %>% # group by everything except
+    # .pred_1 (only common_seed and indID actually matter but the other don't
+    # make a diff in the calculations and it's useful to have them for later)
+    dplyr::summarize(pred_mean = mean(.pred_1, na.rm = TRUE), .groups = "drop")
 
   return(confscore_df)
 
@@ -149,20 +151,22 @@ avg_confscore <- function(data){
 
 calibrated_threshold <- function(data, steps = 1000, plotting = FALSE,
                                  filename = NULL,
-                                 threshold = seq(0,.99, by = 0.01), eps = 0.01){
+                                 threshold = seq(0, .99, by = 0.01),
+                                 eps = 0.01) {
 
   # estimating alpha
   alpha <- dedpul_estimation(data, steps, plotting, filename)
 
   # keep only the unlabeled
   data <- data %>%
-    dplyr::filter(known_offender == 0) %>% dplyr::select(pred_mean)
+    dplyr::filter(known_offender == 0) %>%
+    dplyr::select(pred_mean)
 
   # recursively search for the optimal threshold
-  for (i in length(threshold):1){
+  for (i in rev(seq_len(length(threshold)))) {
     thres_star <- threshold[i]
     sum_pred <- sum(data$pred_mean > thres_star)
-    if (abs(sum_pred/dim(data)[1] - alpha) < eps){
+    if (abs(sum_pred / dim(data)[1] - alpha) < eps) {
       break
     }
   }
@@ -202,7 +206,7 @@ calibrated_threshold <- function(data, steps = 1000, plotting = FALSE,
 #'
 
 dedpul_estimation <- function(data, steps = 1000, plotting = FALSE,
-                              filename = NULL){
+                              filename = NULL) {
 
   # We get density kernels estimated for positive and unlabeled and the values
   # of those densities inferred for unlabeled predictions (sorted)
@@ -241,13 +245,15 @@ dedpul_estimation <- function(data, steps = 1000, plotting = FALSE,
 #' @export
 #'
 
-kernel_unlabeled <- function(data){
+kernel_unlabeled <- function(data) {
 
   # only predictions for offenders
-  pred_pos <- data %>% dplyr::filter(known_offender == 1) %>%
+  pred_pos <- data %>%
+    dplyr::filter(known_offender == 1) %>%
     dplyr::select(pred_mean)
   # only predictions for unlabeled
-  pred_unl <- data %>% dplyr::filter(known_offender == 0) %>%
+  pred_unl <- data %>%
+    dplyr::filter(known_offender == 0) %>%
     dplyr::select(pred_mean)
   # sorted predictions of unlabeled
   y_u <- sort(pred_unl$pred_mean)
@@ -284,9 +290,9 @@ kernel_unlabeled <- function(data){
 #' @export
 #'
 
-compute_r <- function(f_y){
+compute_r <- function(f_y) {
 
-  r <- f_y$f_yp/f_y$f_yu
+  r <- f_y$f_yp / f_y$f_yu
 
   # monotonizing
   r <- monotonize(r = r, y_u = f_y$y_u)
@@ -316,14 +322,14 @@ compute_r <- function(f_y){
 #'
 #' @export
 
-monotonize <- function(r, y_u){
+monotonize <- function(r, y_u) {
 
   threshold_mon <- mean(y_u)
 
   max_r <- 0
 
-  for (i in 1:length(r)){
-    if (y_u[i] > threshold_mon){
+  for (i in seq_len(length(r))) {
+    if (y_u[i] > threshold_mon) {
       max_r <- max(r[i], max_r)
       r[i] <- max_r
     }
@@ -336,7 +342,7 @@ monotonize <- function(r, y_u){
 #' Smoothing r using a rolling median
 #'
 #' @param sorted array of density ratios
-#' @param L_2 denominator to get rolling window of length(r)/L_2
+#' @param l_2 denominator to get rolling window of length(r)/l_2
 #' (default to 20 based on the reference)
 #' @return sorted array of density ratios, smoothed
 #'
@@ -352,9 +358,9 @@ monotonize <- function(r, y_u){
 #' @export
 #'
 
-rolling_median <- function(r, L_2 = 20){
+rolling_median <- function(r, l_2 = 20) {
 
-  r <-  stats::runmed(r, k = length(r)/L_2, algorithm = "Turlach",
+  r <-  stats::runmed(r, k = length(r) / l_2, algorithm = "Turlach",
                na.action = "na.omit")
 
   return(r)
@@ -408,21 +414,23 @@ rolling_median <- function(r, L_2 = 20){
 #'
 
 compute_alpha_star <- function(r, steps = 1000, plotting = FALSE,
-                               filename = NULL){
+                               filename = NULL) {
 
   D_alpha <- compute_D(r, steps)
 
-  D2 <- data.frame(alpha = D_alpha$alpha[2:(nrow(D_alpha)-1)],
-                   D_2 = D_alpha$D[3:nrow(D_alpha)] + D_alpha$D[1:(nrow(D_alpha)-2)] -
-                     2*D_alpha$D[2:(nrow(D_alpha)-1)])
+  D2 <- data.frame(alpha = D_alpha$alpha[2:(nrow(D_alpha) - 1)],
+                   D_2 = D_alpha$D[3:nrow(D_alpha)] +
+                     D_alpha$D[1:(nrow(D_alpha) - 2)] -
+                     2 * D_alpha$D[2:(nrow(D_alpha) - 1)])
 
   alpha_n <- D2$alpha[which.max(D2$D_2)]
 
-  if (plotting == TRUE & is.null(filename) == FALSE){
+  if (plotting == TRUE & is.null(filename) == FALSE) {
     ggplot2::ggplot(data = D_alpha, aes(x = alpha, y = D)) +
       ggplot2::geom_line() +
       ggplot2::geom_point() +
-      ggplot2::geom_point(aes(x = alpha_n, y = D_alpha$D[which.max(D2$D_2)+1]),
+      ggplot2::geom_point(aes(x = alpha_n, y =
+                                D_alpha$D[which.max(D2$D_2) + 1]),
                           size = 4, shape = 22, fill = "black") +
       ggplot2::theme_bw()
     ggplot2::ggsave(filename = filename)
@@ -452,13 +460,13 @@ compute_alpha_star <- function(r, steps = 1000, plotting = FALSE,
 #' @export
 #'
 
-compute_D <- function(r, steps = 1000){
+compute_D <- function(r, steps = 1000) {
 
   alpha_vector <- seq(from = 0, to = 1, length.out = steps)
   alpha_py <- as.matrix(r) %*% t(as.matrix(alpha_vector))
-  alpha_py_min <- pmin(alpha_py,1)
+  alpha_py_min <- pmin(alpha_py, 1)
   D_alpha <- data.frame(alpha = alpha_vector,
-                        D = alpha_vector - apply(alpha_py_min,2,mean))
+                        D = alpha_vector - apply(alpha_py_min, 2, mean))
 
   return(D_alpha)
 

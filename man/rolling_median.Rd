@@ -4,10 +4,10 @@
 \alias{rolling_median}
 \title{Smoothing r using a rolling median}
 \usage{
-rolling_median(r, L_2 = 20)
+rolling_median(r, l_2 = 20)
 }
 \arguments{
-\item{L_2}{denominator to get rolling window of length(r)/L_2
+\item{l_2}{denominator to get rolling window of length(r)/l_2
 (default to 20 based on the reference)}
 
 \item{sorted}{array of density ratios}

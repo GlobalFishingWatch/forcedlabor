@@ -1,8 +1,8 @@
 ---
+title: "forcedlabor: forced labor model package"
 output: github_document
 ---
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
@@ -13,42 +13,71 @@ knitr::opts_chunk$set(
 )
 ```
 
-# forcedlabor
+Updated: `r Sys.Date()`
 
-<!-- badges: start -->
-<!-- badges: end -->
+# Overview
 
-The goal of forcedlabor is to ...
+`forcedlabor` is an R package containing the codes to identify forced labor
+on fishing vessels via a machine learning algorithm trained on a combination of
+known forced labor cases and AIS data predictors.
 
-## Installation
+# Installation
 
-You can install the development version of forcedlabor like so:
+This R package is hosted on a private GitHub repository and can be installed
+using the `devtools` package. Run the following code to check if you already
+have `devtools` and install it if not.
+
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+# Check/install devtools
+if (!require("devtools"))
+  install.packages("devtools")
 ```
 
-## Example
+To connect to GitHub, under the hood `devtools` calls the GitHub API. This means
+that you’ll need to have a personal access token (PAT). Get a PAT here
+https://github.com/settings/tokens and make sure the “repo” scope is included.
+Save your PAT as an R environment variable (variables that should be available
+to R processes) by running `usethis::edit_r_environ()`, adding `GITHUB_PAT =
+"your PAT"`, and saving the updated `.Renviron` file. You might need to restart
+the R session.
 
-This is a basic example which shows you how to solve a common problem:
+Finally, after saving your GitHub PAT to your R environment, install the
+`forcedlabor` package using `devtools`.
 
-```{r example}
-library(forcedlabor)
-## basic example code
+```{r eval = FALSE}
+# Install fishwatchr
+devtools::install_github("GlobalFishingWatch/forcedlabor")
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+# Structure of the repository
 
-```{r cars}
-summary(cars)
-```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. You could also use GitHub Actions to re-render `README.Rmd` every time you push. An example workflow can be found here: <https://github.com/r-lib/actions/tree/v1/examples>.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+* **R:**            R functions of the package
+* **data:**			    Data files. For now, it contains a couple of output data
+                    objects.
+* docs:			        Additional documentation (empty for now)
+* **man:**          Standard documentation files for R functions
+* models:		        Trained models, model summaries, etc. (empty for now)
+* notebooks: 	      Jupyter notebooks and R markdown (empty for now)
+* outputs:		      Models results, static reports, etc.
+  * figures:	      Figures (empty for now)
+* queries:		      SQL files (empty for now)
+* **renv:**         Contains files to activate the R environment with specific
+                    settings
+* **scripts:**		  Regular python and R files. Contains the script to run the
+                    model.
+* **.Rbuildignore** Contains names of files that should be ignored to build
+                    the R package
+* **.Rprofile**     Used in the R session to get the R environment of this
+                    package
+* **.gitignore**	  Files to ignore by version control.
+* **.pre-commit-config.yaml** Style linting using `pre-commit library.
+* **DESCRIPTION**   It stores the metadata of the package
+* **NAMESPACE**     It contains information of important names in the package
+                    to provide space for them and make the package self
+                    contained
+* **README.md**		  Top-level README on how to use this repo
+* **README.Rmd**    Rmarkdown file that generates README.md
+* **forcedlabor.Rproj** Rproj file
+* **renv.lock**     It contains the information on the packages used in the
+                    project.
