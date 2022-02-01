@@ -38,6 +38,11 @@ Finally, after saving your GitHub PAT to your R environment, install the
 devtools::install_github("GlobalFishingWatch/forcedlabor")
 ```
 
+# Using the package
+
+An example of how to use it is in
+[`/scripts/model_run.R`](https://github.com/GlobalFishingWatch/forcedlabor/blob/main/scripts/model_run.R)
+
 # Structure of the repository
 
 -   **R:** R functions of the package
