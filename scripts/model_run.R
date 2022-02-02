@@ -222,3 +222,26 @@ bigrquery::bq_table(project = "world-fishing-827",
   bigrquery::bq_table_upload(values = pred_stats_set,
                   fields = bigrquery::as_bq_fields(pred_stats_set),
                   write_disposition = "WRITE_TRUNCATE")
+
+
+# reproducibility test
+
+# doing this should return a similar outcome to the commented result
+
+model_out <- glue::glue(
+  "SELECT
+      class_mode,
+      class_prop
+    FROM
+      `prj_forced_labor.pred_stats_per_vessel_year_dev`
+"
+)
+
+pred_df <- fishwatchr::gfw_query(query = model_out, run_query = TRUE,
+                               con = con)$data
+table(pred_df)
+
+#               class_prop
+# class_mode   0.5  0.75     1
+          # 0  1036  4099 69798
+          # 1  1865  2482 20503
