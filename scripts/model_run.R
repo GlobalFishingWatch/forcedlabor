@@ -1,3 +1,11 @@
+### installing and loading package ###
+
+if (!require("forcedlabor")) {
+  credentials::set_github_pat()
+  devtools::install_github("GlobalFishingWatch/forcedlabor")
+}
+library(forcedlabor)
+
 
 ###################### data pre-processing ##########################
 
@@ -14,7 +22,7 @@ ais_fl <- glue::glue(
   "SELECT
       *
     FROM
-      `scratch_rocio.all_fl_ais`
+      `prj_forced_labor.all_fl_ais`
 "
 )
 
@@ -26,7 +34,7 @@ ais_tidy <- glue::glue(
   "SELECT
       *
     FROM
-      `scratch_rocio.all_together_tidy`
+      `prj_forced_labor.all_together_tidy`
 "
 )
 
@@ -217,7 +225,7 @@ pred_stats_set <- training_df %>%
                                              "event_ais_year"))
 
 bigrquery::bq_table(project = "world-fishing-827",
-         table = "pred_stats_per_vessel_year_dev",
+         table = "pred_stats_per_vessel_year_dev_2021",
          dataset = "prj_forced_labor") %>%
   bigrquery::bq_table_upload(values = pred_stats_set,
                   fields = bigrquery::as_bq_fields(pred_stats_set),
@@ -241,7 +249,10 @@ pred_df <- fishwatchr::gfw_query(query = model_out, run_query = TRUE,
                                con = con)$data
 table(pred_df)
 
+# or
+table(pred_stats_set$class_mode, pred_stats_set$class_prop)
+
 #               class_prop
 # class_mode   0.5  0.75     1
-          # 0  1036  4099 69798
-          # 1  1865  2482 20503
+          # 0  402  2984 77733
+          # 1  2110  3447 27977
