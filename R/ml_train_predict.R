@@ -53,16 +53,16 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 
   # Setting up the parallelization
   if (parallel_plan == "multicore") {
-    future::plan(future:::multicore,
+    future::plan(future::multicore,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
     # the garbage collector will run automatically (and asynchronously) on the
     # workers to minimize the memory footprint of the worker.
   }else if (parallel_plan == "psock") {
    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
-    future::plan(future:::cluster, workers = cl)
+    future::plan(future::cluster, workers = cl)
   }else {
     utils::globalVariables("multisession")
-    future::plan(future:::multisession,
+    future::plan(future::multisession,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }
 
@@ -72,21 +72,22 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
   train_pred_proba <- bag_runs %>%
     dplyr::mutate(
       # get a recipe with downsampling for each bag and corresponding seed
-      fl_recipe = purrr::map(recipe_seed, function(x) {
+      fl_recipe = purrr::map(.data$recipe_seed, function(x) {
         fl_rec_down <- fl_rec %>%
-          themis::step_downsample(known_offender,
+          themis::step_downsample(.data$known_offender,
                                   under_ratio = down_sample_ratio, seed = x,
                                   skip = TRUE) #%>%
       })
     ) %>%
     # Make predictions for all CV folds and hyperparameters
     # Run this in parallel, so that each bag is processed on a parallel worker
-    dplyr::mutate(predictions = furrr::future_map2(fl_recipe, common_seed,
+    dplyr::mutate(predictions = furrr::future_map2(.data$fl_recipe,
+                                                   .data$common_seed,
                                                    function(x, y) {
       # Ensure all bags look the same across hyperparameter tuning grid
       set.seed(y)
       cv_splits <- cv_splits_all %>%
-        dplyr::filter(common_seed == y) %>%
+        dplyr::filter(.data$common_seed == y) %>%
         .$cv_splits %>%
         purrr::pluck(1) # unlist first (unique) element
 
@@ -105,14 +106,14 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                   # the raw numeric, rather than class
                   metrics = yardstick::metric_set(yardstick::roc_auc),
                   control = tune::control_resamples(save_pred = TRUE)) %>%
-        dplyr::select(id, .predictions) %>%
-        tidyr::unnest(.predictions) %>%
-        dplyr::select(-.pred_0, -.config)
+        dplyr::select(id, .data$.predictions) %>%
+        tidyr::unnest(.data$.predictions) %>%
+        dplyr::select(-.data$.pred_0, -.data$.config)
       return(cv_predictions)
     }, .options = furrr::furrr_options(seed = TRUE))) %>%
     # Remove unnecessary columns
-    dplyr::select(-recipe_seed, -fl_recipe) %>%
-    tidyr::unnest(predictions)
+    dplyr::select(-.data$recipe_seed, -.data$fl_recipe) %>%
+    tidyr::unnest(.data$predictions)
 
   if (parallel_plan == "psock") {
     parallel::stopCluster(cl)
@@ -142,27 +143,28 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 ml_hyperpar <- function(train_pred_proba) {
 
   roc_auc_results <- train_pred_proba %>%
-    dplyr::group_by(dplyr::across(-c(.pred_1, bag, known_offender, .row))) %>%
-    yardstick::roc_auc(truth = known_offender,
-            .pred_1) %>%
+    dplyr::group_by(dplyr::across(-c(.data$.pred_1, .data$bag,
+                                     .data$known_offender, .data$.row))) %>%
+    yardstick::roc_auc(truth = .data$known_offender,
+            .data$.pred_1) %>%
     dplyr::ungroup() %>% # getting auc per hyperparameter combination
     # auc because it's not corrupted by the conditions of our data
     # now we need to get stats across folds per hyperparameter combination
-    dplyr::group_by(dplyr::across(-c(id, .estimate))) %>%
+    dplyr::group_by(dplyr::across(-c(.data$id, .data$.estimate))) %>%
     # Get mean, min of performance across folds for each hyperparameter
     # Will get NA if fold contains NAs or NaNs
-    dplyr::summarize(mean_performance = mean(.estimate),
-              min_performance = min(.estimate)) %>%
+    dplyr::summarize(mean_performance = mean(.data$.estimate),
+              min_performance = min(.data$.estimate)) %>%
     dplyr::ungroup()
 
   # now we need to find the best hyperparameters using the best mean auc per
   # common_seed
   best_hyperparameters <- roc_auc_results %>%
-    dplyr::arrange(dplyr::desc(mean_performance)) %>%
-    dplyr::group_by(common_seed) %>%
+    dplyr::arrange(dplyr::desc(.data$mean_performance)) %>%
+    dplyr::group_by(.data$common_seed) %>%
     dplyr::slice(1) %>%
-    dplyr::select(-.metric, -.estimator, -mean_performance,
-                  -min_performance) %>%
+    dplyr::select(-.data$.metric, -.data$.estimator, -.data$mean_performance,
+                  -.data$min_performance) %>%
     dplyr::ungroup()
 
   return(list(auc_results = roc_auc_results,
@@ -176,7 +178,7 @@ ml_hyperpar <- function(train_pred_proba) {
 #' @description For each bag seed, fit one random forest to each bag in each
 #' fold, and predict over the assessment set and the holdout set.
 #'
-#' @param trainining_df training data frame
+#' @param training_df training data frame
 #' @param fl_rec recipe
 #' @param rf_spec model specifications
 #' @param cv_splits_all tibble containing tibbles of cross-validation splits
@@ -204,6 +206,7 @@ ml_hyperpar <- function(train_pred_proba) {
 #' @importFrom purrr pluck
 #' @importFrom rsample analysis
 #' @importFrom rsample assessment
+#' @importFrom stats predict
 #' @importFrom themis step_downsample
 #' @importFrom tune finalize_workflow
 #' @import dplyr
@@ -225,16 +228,16 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 
   # Setting up the parallelization
   if (parallel_plan == "multicore") {
-    future::plan(future:::multicore,
+    future::plan(future::multicore,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
     # the garbage collector will run automatically (and asynchronously) on the
     # workers to minimize the memory footprint of the worker.
   }else if (parallel_plan == "psock") {
     cl <- parallelly::makeClusterPSOCK(parallely::availableCores() - free_cores)
-    future::plan(future:::cluster, workers = cl)
+    future::plan(future::cluster, workers = cl)
   }else {
     utils::globalVariables("multisession")
-    future::plan(future:::multisession,
+    future::plan(future::multisession,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }
 
@@ -244,9 +247,9 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
   results <-
     bag_runs %>%
   dplyr::mutate(
-    prediction_output = furrr::future_map(.x = counter, .f = function(x) {
+    prediction_output = furrr::future_map(.x = .data$counter, .f = function(x) {
       fl_rec_down <- fl_rec %>%
-        themis::step_downsample(known_offender,
+        themis::step_downsample(.data$known_offender,
                                 under_ratio = down_sample_ratio,
                                 seed = bag_runs$recipe_seed[x],
                                 skip = TRUE)
@@ -255,21 +258,21 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
       set.seed(bag_runs$common_seed[x])
       # get the 10 folds related to that common seed
       cv_splits <- cv_splits_all %>%
-        dplyr::filter(common_seed == bag_runs$common_seed[x]) %>%
+        dplyr::filter(.data$common_seed == bag_runs$common_seed[x]) %>%
         .$cv_splits %>%
         purrr::pluck(1)
 
       # extract analysis and assessment sets for those folds
       analysis_data <- cv_splits %>%
         dplyr::mutate(# Create analysis dataset based on CV folds
-          analysis = purrr::map(splits, ~rsample::analysis(.x)),
+          analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
           # Create assessment dataset based on CV folds
-          assessment = purrr::map(splits, ~rsample::assessment(.x))) %>%
-        dplyr::select(-splits)
+          assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) %>%
+        dplyr::select(-.data$splits)
 
       # extract the optimal hyperpar values for that common seed
       best_hyperparameters_temp <- best_hyperparameters$best_hyperparameters %>%
-        dplyr::filter(common_seed == bag_runs$common_seed[x])
+        dplyr::filter(.data$common_seed == bag_runs$common_seed[x])
 
       # workflow
       flow <- workflows::workflow() %>%
@@ -281,19 +284,19 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 
       predictions <- purrr::map(1:dim(analysis_data)[1], function(alpha) {
         model <- parsnip::fit(flow, analysis_data$analysis[[alpha]])
-        results_internal <- predict(object = model,
+        results_internal <- stats::predict(object = model,
                                   new_data = analysis_data$assessment[[alpha]],
                                   type = "prob") %>%
-          dplyr::select(.pred_1) %>%
+          dplyr::select(.data$.pred_1) %>%
           dplyr::bind_cols(analysis_data$assessment[[alpha]][c("indID",
                                                         "known_offender",
                                                         "possible_offender",
                                                         "known_non_offender",
                                                         "event_ais_year")]) %>%
           dplyr::mutate(holdout = 0)
-        results_fold <- predict(object = model, new_data = prediction_df,
+        results_fold <- stats::predict(object = model, new_data = prediction_df,
                                 type = "prob") %>%
-          dplyr::select(.pred_1) %>%
+          dplyr::select(.data$.pred_1) %>%
           dplyr::bind_cols(prediction_df[c("indID", "known_offender",
                                     "possible_offender", "known_non_offender",
                                     "event_ais_year")]) %>%

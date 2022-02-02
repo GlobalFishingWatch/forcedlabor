@@ -18,12 +18,12 @@
 ml_pred_summary <- function(data, num_common_seeds) {
 
   pred_class_stats <- data %>%
-    dplyr::group_by(indID) %>%
-    dplyr::add_count(pred_class, sort = TRUE) %>%
+    dplyr::group_by(.data$indID) %>%
+    dplyr::add_count(.data$pred_class, sort = TRUE) %>%
     dplyr::slice(1) %>% # we're assuming that there will be no ties
-    dplyr::mutate(class_mode = pred_class,
+    dplyr::mutate(class_mode = .data$pred_class,
                   class_prop = n / num_common_seeds) %>%
-    dplyr::select(-c(pred_class, n, thres, common_seed))
+    dplyr::select(-c(.data$pred_class, n, .data$thres, .data$common_seed))
 
   return(pred_class_stats)
 }

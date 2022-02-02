@@ -49,13 +49,13 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
   predictions_set  <- avg_confscore(data)
 
   average_assessment_per_seed <- predictions_set %>%
-    dplyr::filter(holdout == 0)
+    dplyr::filter(.data$holdout == 0)
 
   # getting calibrated thresholds based on the dedpul algorithm
   thresholds <- common_seed_tibble %>%
-    dplyr::mutate(thres = purrr::map_dbl(common_seed, function(x) {
+    dplyr::mutate(thres = purrr::map_dbl(.data$common_seed, function(x) {
       subavg_pred <- average_assessment_per_seed %>%
-        dplyr::filter(common_seed == x)
+        dplyr::filter(.data$common_seed == x)
       if (plotting == TRUE) {
         filename <- paste0(filepath, paste0("D_alpha_common_seed_", x, ".png"))
       }else{
@@ -72,8 +72,8 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 
   pred_class_seed <- predictions_set %>%
     dplyr::left_join(thresholds, by = "common_seed")  %>%
-    dplyr::mutate(pred_class = purrr::map2_dbl(pred_mean,
-                                               thres, function(x, y) {
+    dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
+                                               .data$thres, function(x, y) {
       ifelse(x > y, 1, 0)}))
 
   return(pred_class_seed)
@@ -102,14 +102,16 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 avg_confscore <- function(data) {
 
   confscore_df <- data %>%
-    dplyr::select(common_seed, prediction_output) %>%
-    tidyr::unnest(prediction_output) %>% # from having a list per cell to a
-    # tibble per cell
-    tidyr::unnest(prediction_output) %>% # everything is a regular tibble now
-    dplyr::group_by(dplyr::across(-.pred_1)) %>% # group by everything except
-    # .pred_1 (only common_seed and indID actually matter but the other don't
-    # make a diff in the calculations and it's useful to have them for later)
-    dplyr::summarize(pred_mean = mean(.pred_1, na.rm = TRUE), .groups = "drop")
+    dplyr::select(.data$common_seed, .data$prediction_output) %>%
+    tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
+    # a tibble per cell
+    tidyr::unnest(.data$prediction_output) %>% # everything is a regular tibble
+    dplyr::group_by(dplyr::across(-.data$.pred_1)) %>% # group by everything
+    # except .pred_1 (only common_seed and indID actually matter but the other
+    # don't make a diff in the calculations and it's useful to have them for
+    # later)
+    dplyr::summarize(pred_mean = mean(.data$.pred_1, na.rm = TRUE),
+                     .groups = "drop")
 
   return(confscore_df)
 
@@ -159,8 +161,8 @@ calibrated_threshold <- function(data, steps = 1000, plotting = FALSE,
 
   # keep only the unlabeled
   data <- data %>%
-    dplyr::filter(known_offender == 0) %>%
-    dplyr::select(pred_mean)
+    dplyr::filter(.data$known_offender == 0) %>%
+    dplyr::select(.data$pred_mean)
 
   # recursively search for the optimal threshold
   for (i in rev(seq_len(length(threshold)))) {
@@ -249,12 +251,12 @@ kernel_unlabeled <- function(data) {
 
   # only predictions for offenders
   pred_pos <- data %>%
-    dplyr::filter(known_offender == 1) %>%
-    dplyr::select(pred_mean)
+    dplyr::filter(.data$known_offender == 1) %>%
+    dplyr::select(.data$pred_mean)
   # only predictions for unlabeled
   pred_unl <- data %>%
-    dplyr::filter(known_offender == 0) %>%
-    dplyr::select(pred_mean)
+    dplyr::filter(.data$known_offender == 0) %>%
+    dplyr::select(.data$pred_mean)
   # sorted predictions of unlabeled
   y_u <- sort(pred_unl$pred_mean)
   # density kernels and interpolation to the unlabeled values
@@ -341,7 +343,7 @@ monotonize <- function(r, y_u) {
 
 #' Smoothing r using a rolling median
 #'
-#' @param sorted array of density ratios
+#' @param r sorted array of density ratios
 #' @param l_2 denominator to get rolling window of length(r)/l_2
 #' (default to 20 based on the reference)
 #' @return sorted array of density ratios, smoothed
@@ -426,7 +428,7 @@ compute_alpha_star <- function(r, steps = 1000, plotting = FALSE,
   alpha_n <- D2$alpha[which.max(D2$D_2)]
 
   if (plotting == TRUE & is.null(filename) == FALSE) {
-    ggplot2::ggplot(data = D_alpha, aes(x = alpha, y = D)) +
+    ggplot2::ggplot(data = D_alpha, aes(x = .data$alpha, y = .data$D)) +
       ggplot2::geom_line() +
       ggplot2::geom_point() +
       ggplot2::geom_point(aes(x = alpha_n, y =

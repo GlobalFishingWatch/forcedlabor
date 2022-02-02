@@ -5,13 +5,7 @@
 \title{Preprocessing of offenders, possible offenders, non offenders and unlabeled
 data}
 \usage{
-ml_prep_data(
-  fl_data = fl_df$data,
-  tidy_data = alltogether_tidy$data,
-  gears_interest,
-  vars_to_factor,
-  vars_remove
-)
+ml_prep_data(fl_data, tidy_data, gears_interest, vars_to_factor, vars_remove)
 }
 \arguments{
 \item{fl_data}{data frame of offenders. Needs to have columns such as: a gear
@@ -31,7 +25,7 @@ of interest.}
 convert from character to factor. They have to be columns existing in fl_data
 and tidy_data.}
 
-\item{vars_remove:}{vector of character elements with names of columns to
+\item{vars_remove}{vector of character elements with names of columns to
 remove from tidy_data.}
 }
 \value{

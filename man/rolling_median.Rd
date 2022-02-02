@@ -7,10 +7,10 @@
 rolling_median(r, l_2 = 20)
 }
 \arguments{
+\item{r}{sorted array of density ratios}
+
 \item{l_2}{denominator to get rolling window of length(r)/l_2
 (default to 20 based on the reference)}
-
-\item{sorted}{array of density ratios}
 }
 \value{
 sorted array of density ratios, smoothed

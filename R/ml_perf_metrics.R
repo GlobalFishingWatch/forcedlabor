@@ -27,23 +27,26 @@
 ml_perf_metrics <- function(data, common_seed_tibble) {
 
   recall_seed <- common_seed_tibble %>%
-    dplyr::mutate(recall_perf = purrr::map_dbl(common_seed, function(x) {
+    dplyr::mutate(recall_perf = purrr::map_dbl(.data$common_seed, function(x) {
       data %>%
-        dplyr::filter(holdout == 0 & common_seed == x) %>%
-        yardstick::recall(truth = factor(known_offender, levels = c(1, 0)),
-                          estimate = factor(pred_class, levels = c(1, 0))) %>%
-        dplyr::select(.estimate) %>%
+        dplyr::filter(.data$holdout == 0 & .data$common_seed == x) %>%
+        yardstick::recall(truth = factor(.data$known_offender,
+                                         levels = c(1, 0)),
+                          estimate = factor(.data$pred_class,
+                                            levels = c(1, 0))) %>%
+        dplyr::select(.data$.estimate) %>%
         purrr::pluck(1)
     }))
 
   specif_seed <- common_seed_tibble %>%
-    dplyr::mutate(spec_perf = purrr::map_dbl(common_seed, function(x) {
+    dplyr::mutate(spec_perf = purrr::map_dbl(.data$common_seed, function(x) {
       data %>%
-        dplyr::filter(holdout == 1 & known_non_offender == 1 &
-                        event_ais_year == 1 & common_seed == x) %>%
-        yardstick::spec(truth = factor(known_offender, levels = c(1, 0)),
-                        estimate = factor(pred_class, levels = c(1, 0))) %>%
-        dplyr::select(.estimate) %>%
+        dplyr::filter(.data$holdout == 1 & .data$known_non_offender == 1 &
+                        .data$event_ais_year == 1 & .data$common_seed == x) %>%
+        yardstick::spec(truth = factor(.data$known_offender, levels = c(1, 0)),
+                        estimate = factor(.data$pred_class,
+                                          levels = c(1, 0))) %>%
+        dplyr::select(.data$.estimate) %>%
         purrr::pluck(1)
     }))
 

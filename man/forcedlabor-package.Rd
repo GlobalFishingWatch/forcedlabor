@@ -4,9 +4,9 @@
 \name{forcedlabor-package}
 \alias{forcedlabor}
 \alias{forcedlabor-package}
-\title{forcedlabor: What the Package Does (One Line, Title Case)}
+\title{forcedlabor: forced labor machine learning algorithms}
 \description{
-What the package does (one paragraph).
+forcedlabor is an R package containing the codes to identify forced labor on fishing vessels via a machine learning algorithm trained on a combination of known forced labor cases and AIS data predictors.
 }
 \seealso{
 Useful links:
@@ -17,7 +17,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com} (\href{https://orcid.org/YOUR-ORCID-ID}{ORCID})
+\strong{Maintainer}: Rocío Joo \email{rocio.joo@globalfishingwatch.org} (\href{https://orcid.org/0000-0003-0319-4210}{ORCID})
 
 }
 \keyword{internal}

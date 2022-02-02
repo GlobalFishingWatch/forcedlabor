@@ -18,6 +18,8 @@ ml_frankenstraining(
 )
 }
 \arguments{
+\item{training_df}{training data frame}
+
 \item{fl_rec}{recipe}
 
 \item{rf_spec}{model specifications}
@@ -40,8 +42,6 @@ common seed}
 
 \item{prediction_df}{hold-out data frame with possible offenders and non
 offenders to predict on}
-
-\item{trainining_df}{training data frame}
 }
 \value{
 an object with predicted values and fitted models
