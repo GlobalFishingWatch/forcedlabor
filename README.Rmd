@@ -58,6 +58,8 @@ An example of how to use it is in
 
 # Structure of the repository
 
+Names in **bold** correspond to folders and files that are currently used.
+
 * **R:**            R functions of the package
 * **data:**			    Data files. For now, it contains a couple of output data
                     objects.
