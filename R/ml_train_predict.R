@@ -250,7 +250,7 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
   dplyr::mutate(
     prediction_output = furrr::future_map(.x = .data$counter, .f = function(x) {
       fl_rec_down <- fl_rec %>%
-        themis::step_downsample(.data$known_offender,
+        themis::step_downsample(known_offender,
                                 under_ratio = down_sample_ratio,
                                 seed = bag_runs$recipe_seed[x],
                                 skip = TRUE)
