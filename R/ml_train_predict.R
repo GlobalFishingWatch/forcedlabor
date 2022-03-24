@@ -84,7 +84,6 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
     dplyr::mutate(predictions = furrr::future_map2(.data$fl_recipe,
                                                    .data$common_seed,
                                                    function(x, y) {
-      print(class(x))
       # Ensure all bags look the same across hyperparameter tuning grid
       set.seed(y)
       cv_splits <- cv_splits_all %>%
