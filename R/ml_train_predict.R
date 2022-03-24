@@ -74,7 +74,7 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
       # get a recipe with downsampling for each bag and corresponding seed
       fl_recipe = purrr::map(.data$recipe_seed, function(x) {
         fl_rec_down <- fl_rec %>%
-          themis::step_downsample(.data$known_offender,
+          themis::step_downsample(known_offender,
                                   under_ratio = down_sample_ratio, seed = x,
                                   skip = TRUE) #%>%
       })
@@ -84,6 +84,7 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
     dplyr::mutate(predictions = furrr::future_map2(.data$fl_recipe,
                                                    .data$common_seed,
                                                    function(x, y) {
+      print(class(x))
       # Ensure all bags look the same across hyperparameter tuning grid
       set.seed(y)
       cv_splits <- cv_splits_all %>%
