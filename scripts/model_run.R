@@ -167,7 +167,7 @@ train_pred_proba <- ml_training(training_df = training_df, fl_rec = fl_rec,
                                 cv_splits_all = cv_splits_all,
                                 bag_runs = bag_runs,
                                 down_sample_ratio = down_sample_ratio,
-                                num_grid = 2, parallel_plan = parallel_plan,
+                                num_grid = 5, parallel_plan = parallel_plan,
                                 free_cores = free_cores)
 tictoc::toc()
 

@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.1.2",
+    "Version": "4.2.0",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -516,7 +516,7 @@
       "RemoteUsername": "GlobalFishingWatch",
       "RemoteRef": "HEAD",
       "RemoteSha": "37acbb7063a60861237909515b476a4a272ec1f5",
-      "Hash": "74c061ec23c8c1f772407eddca9fa416"
+      "Hash": "5cbf3a48bd85c69f9d8c70e1bf7f3529"
     },
     "forcats": {
       "Package": "forcats",
