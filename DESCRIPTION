@@ -31,5 +31,8 @@ Imports:
     tune,
     workflows,
     yardstick
+Suggests:
+    ranger,
+    tictoc
 URL: https://github.com/GlobalFishingWatch/forcedlabor
 BugReports: https://github.com/GlobalFishingWatch/forcedlabor/issues

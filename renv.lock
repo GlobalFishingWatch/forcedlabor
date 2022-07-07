@@ -163,6 +163,13 @@
       "Repository": "CRAN",
       "Hash": "82b411caa086a4f007ec43a288fba990"
     },
+    "RcppEigen": {
+      "Package": "RcppEigen",
+      "Version": "0.3.3.9.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "4c86baed78388ceb06f88e3e9a1d87f5"
+    },
     "Rttf2pt1": {
       "Package": "Rttf2pt1",
       "Version": "1.3.9",
@@ -1175,6 +1182,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "28692dfa3efea8e19d29347d05f5a489"
+    },
+    "ranger": {
+      "Package": "ranger",
+      "Version": "0.13.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "420a2d7a05923e33bbdf5b67eaebbfe5"
     },
     "rapidjsonr": {
       "Package": "rapidjsonr",

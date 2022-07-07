@@ -41,7 +41,7 @@
 #' @importFrom workflows add_recipe
 #' @importFrom yardstick metric_set
 #' @importFrom yardstick roc_auc
-#' @import recipes
+#' @rawNamespace import(recipes, except = step_downsample)
 #' @import tidyselect
 #'
 #' @export
@@ -233,7 +233,7 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
     # the garbage collector will run automatically (and asynchronously) on the
     # workers to minimize the memory footprint of the worker.
   }else if (parallel_plan == "psock") {
-    cl <- parallelly::makeClusterPSOCK(parallely::availableCores() - free_cores)
+    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
     future::plan(future::cluster, workers = cl)
   }else {
     utils::globalVariables("multisession")
