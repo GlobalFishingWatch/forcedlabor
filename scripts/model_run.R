@@ -121,14 +121,14 @@ rf_spec <-
 
 ## defining some parameter values ##
 num_folds <- 10 # number of folds
-num_bags <- 10 #10,20,30,50,100 # Keep this low for now for speed,
+num_bags <- 5 #10,20,30,50,100 # Keep this low for now for speed,
 # but can crank up later
 down_sample_ratio <- 1 # downsampling ratio
 # Set common seed to use anywhere that uses random numbers
 # We'll vary this to get confidence intervals
 # Eventually we can crank this up (16,32,64), but keep it to 2 for now for
 # testing
-num_common_seeds <- 4
+num_common_seeds <- 15
 common_seed_tibble <- tibble::tibble(common_seed =
                                        seq(1:num_common_seeds) * 101)
 
@@ -215,6 +215,159 @@ perf_metrics <- ml_perf_metrics(data = classif_res,
 
 pred_class_stats <- ml_pred_summary(data = classif_res,
                                     num_common_seeds = num_common_seeds)
+pred_class_stats_composite <- pred_class_stats
+bigrquery::bq_table(project = "world-fishing-827",
+                    table = "pred_class_stats_composite15_bag1_1",
+                    dataset = "scratch_rocio") %>%
+  bigrquery::bq_table_upload(values = pred_class_stats,
+                             fields = bigrquery::as_bq_fields(pred_class_stats),
+                             write_disposition = "WRITE_TRUNCATE")
+
+
+### Now comparing composite model mode with outputs from each model
+
+pred_class_composite <- pred_class_stats %>%
+  dplyr::select(indID, class_mode)
+
+composite_all_1 <- purrr::map_dfr(cv_splits_all$common_seed, function(x){
+  acc <- classif_res %>%
+    dplyr::filter(common_seed == x) %>%
+    dplyr::select(indID, pred_class) %>%
+    dplyr::right_join(by = "indID", y = pred_class_composite) %>%
+    yardstick::accuracy(truth = as.factor(class_mode), estimate = as.factor(pred_class)) %>%
+    dplyr::select(.estimate)
+})
+names(composite_all_1) <- "value"
+
+bigrquery::bq_table(project = "world-fishing-827",
+                    table = "composite_all_1_matches",
+                    dataset = "scratch_rocio") %>%
+  bigrquery::bq_table_upload(values = composite_all_1,
+                             fields = bigrquery::as_bq_fields(composite_all_1),
+                             write_disposition = "WRITE_TRUNCATE")
+
+
+### Now comparing composite model mode with 5 3-composite model modes
+
+# one random permutation to make groups
+
+perm_seeds <- sample(x = cv_splits_all$common_seed, size = 15, replace = FALSE)
+
+# now function to compare group modes
+
+group_comparison <- function(matrix_perm){
+  dplyr::as_tibble(
+    apply(X = matrix_perm, MARGIN = 1, FUN = function(x){
+      classif_res %>%
+        dplyr::filter(.data$common_seed %in% x == TRUE) %>%
+        dplyr::group_by(.data$indID) %>%
+        dplyr::add_count(.data$pred_class, sort = TRUE) %>%
+        dplyr::slice(1) %>%
+        dplyr::mutate(class_mode_group = .data$pred_class) %>%
+        dplyr::ungroup() %>%
+        dplyr::select(indID, class_mode_group) %>%
+        dplyr::right_join(by = "indID", y = pred_class_composite) %>%
+        yardstick::accuracy(truth = as.factor(class_mode), estimate = as.factor(class_mode_group)) %>%
+        dplyr::select(.estimate) %>%
+        dplyr::pull()
+    })
+  )
+}
+
+# now making 5 groups of three
+
+matrix_perm <- matrix(data = perm_seeds, nrow = 5, ncol = 3, byrow = TRUE)
+composite_all_3 <- group_comparison(matrix_perm)
+bigrquery::bq_table(project = "world-fishing-827",
+                    table = "composite_all_3_matches",
+                    dataset = "scratch_rocio") %>%
+  bigrquery::bq_table_upload(values = composite_all_3,
+                             fields = bigrquery::as_bq_fields(composite_all_3),
+                             write_disposition = "WRITE_TRUNCATE")
+
+
+# now making 3 groups of five
+
+
+matrix_perm <- matrix(data = perm_seeds, nrow = 3, ncol = 5, byrow = TRUE)
+composite_all_5 <- group_comparison(matrix_perm)
+
+bigrquery::bq_table(project = "world-fishing-827",
+                    table = "composite_all_5_matches",
+                    dataset = "scratch_rocio") %>%
+  bigrquery::bq_table_upload(values = composite_all_5,
+                             fields = bigrquery::as_bq_fields(composite_all_5),
+                             write_disposition = "WRITE_TRUNCATE")
+
+
+# stats and plots
+
+std <- function(x, na.rm = FALSE) {
+  if (na.rm) x <- na.omit(x)
+  sqrt(var(x) / length(x))
+}
+
+stats_plots <- data.frame(avg = rep(NA,3), avg_minus_std = rep(NA,3), avg_plus_std = rep(NA,3))
+
+test <- "composite_all_1_matches"
+comp <- glue::glue(
+  "SELECT
+      *
+    FROM
+      `scratch_rocio.{test}`
+"
+)
+comp_1_df <- fishwatchr::gfw_query(query = comp, run_query = TRUE, con = con)$data
+stats_plots$avg[1] <- mean(comp_1_df$value)
+stats_plots$avg_minus_std[1] <- stats_plots$avg[1] - std(comp_1_df$value)
+stats_plots$avg_plus_std[1] <- stats_plots$avg[1] + std(comp_1_df$value)
+
+test <- "composite_all_3_matches"
+comp <- glue::glue(
+  "SELECT
+      *
+    FROM
+      `scratch_rocio.{test}`
+"
+)
+comp_1_df <- fishwatchr::gfw_query(query = comp, run_query = TRUE, con = con)$data
+stats_plots$avg[2] <- mean(comp_1_df$value)
+stats_plots$avg_minus_std[2] <- stats_plots$avg[2] - std(comp_1_df$value)
+stats_plots$avg_plus_std[2] <- stats_plots$avg[2] + std(comp_1_df$value)
+
+test <- "composite_all_5_matches"
+comp <- glue::glue(
+  "SELECT
+      *
+    FROM
+      `scratch_rocio.{test}`
+"
+)
+comp_1_df <- fishwatchr::gfw_query(query = comp, run_query = TRUE, con = con)$data
+stats_plots$avg[3] <- mean(comp_1_df$value)
+stats_plots$avg_minus_std[3] <- stats_plots$avg[3] - std(comp_1_df$value)
+stats_plots$avg_plus_std[3] <- stats_plots$avg[3] + std(comp_1_df$value)
+
+stats_plots$seeds <- c(1,3,5)
+stats_plots <- stats_plots %>%
+  mutate(avg_1 = 1 - avg,
+         avg_1_minus_std = avg_1 - (avg_plus_std - avg),
+         avg_1_plus_std = avg_1 - (avg_minus_std - avg))
+
+
+ggplot(data = stats_plots, aes(x = seeds, y = avg)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = avg_minus_std, ymax = avg_plus_std), width = 0.2) +
+  scale_x_continuous(breaks = c(1,3,5)) +
+  theme_bw()
+
+
+ggplot(data = stats_plots, aes(x = seeds, y = avg_1)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = avg_1_minus_std, ymax = avg_1_plus_std), width = 0.2) +
+  scale_x_continuous(breaks = c(1,3,5)) +
+  ylim(c(0, 0.04)) +
+  theme_bw()
 
 # if we want to save everything together
 pred_stats_set <- training_df %>%
