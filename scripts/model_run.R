@@ -128,7 +128,7 @@ down_sample_ratio <- 1 # downsampling ratio
 # We'll vary this to get confidence intervals
 # Eventually we can crank this up (16,32,64), but keep it to 2 for now for
 # testing
-num_common_seeds <- 15
+num_common_seeds <- 2
 common_seed_tibble <- tibble::tibble(common_seed =
                                        seq(1:num_common_seeds) * 101)
 
@@ -139,7 +139,9 @@ bag_runs <- common_seed_tibble %>%
   # Will use different random seeds when implementing recipes for each bag
   dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) %>%
   # counter
-  dplyr::mutate(counter = dplyr::row_number())
+  dplyr::mutate(counter = dplyr::row_number()) # %>%
+  # # new feature for sensitivity
+  # dplyr::mutate(bag_group = rep(seq(3), 3 * num_common_seeds))
 
 ## parallelization strategy
 parallel_plan <- "multicore" # multisession if running from RStudio, or
@@ -175,7 +177,7 @@ tictoc::toc()
 ###### finding the optimal threshold and hyperparameters #########
 
 tictoc::tic()
-best_hyperparameters <- ml_hyperpar(train_pred_proba)
+best_hyperparameters <- ml_hyperpar(train_pred_proba)#ml_hyperpar_sensitivity(train_pred_proba)
 # write_csv(best_hyperparameters,here::here("outputs/stats",
 # "best_hyperpar.csv"))
 tictoc::toc()
@@ -200,15 +202,26 @@ tictoc::toc()
 
 tictoc::tic()
 classif_res <- ml_classification(data = cv_model_res, common_seed_tibble,
-                                 steps = 1000, plotting = FALSE,
-                                 filepath = NULL,
-                                 threshold = seq(0, .99, by = 0.01), eps = 0.01)
+                                             steps = 1000, plotting = FALSE,
+                                             filepath = NULL,
+                                             threshold = seq(0, .99, by = 0.01), eps = 0.01)
+  # ml_classification_sensitivity(data = cv_model_res, common_seed_tibble,
+  #                                steps = 1000, plotting = FALSE,
+  #                                filepath = NULL,
+  #                                threshold = seq(0, .99, by = 0.01), eps = 0.01)
 tictoc::toc()
 
-# Computes recall for assessment sets and specificity for holdout non offenders
+bigrquery::bq_table(project = "world-fishing-827",
+                    table = "classif_3seeds_5groups_5bags",
+                    dataset = "scratch_rocio") %>%
+  bigrquery::bq_table_upload(values = classif_res,
+                             fields = bigrquery::as_bq_fields(classif_res),
+                             write_disposition = "WRITE_TRUNCATE")
 
-perf_metrics <- ml_perf_metrics(data = classif_res,
-                                common_seed_tibble = common_seed_tibble)
+# # Computes recall for assessment sets and specificity for holdout non offenders
+#
+# perf_metrics <- ml_perf_metrics(data = classif_res,
+#                                 common_seed_tibble = common_seed_tibble)
 
 ##### Prediction summary: Classification between seeds #####
 # This is info we can give to external collaborators
@@ -217,7 +230,7 @@ pred_class_stats <- ml_pred_summary(data = classif_res,
                                     num_common_seeds = num_common_seeds)
 pred_class_stats_composite <- pred_class_stats
 bigrquery::bq_table(project = "world-fishing-827",
-                    table = "pred_class_stats_composite15_bag1_1",
+                    table = "pred_class_stats_composite3_25bags",
                     dataset = "scratch_rocio") %>%
   bigrquery::bq_table_upload(values = pred_class_stats,
                              fields = bigrquery::as_bq_fields(pred_class_stats),
@@ -228,6 +241,8 @@ bigrquery::bq_table(project = "world-fishing-827",
 
 pred_class_composite <- pred_class_stats %>%
   dplyr::select(indID, class_mode)
+
+# Composite-3 with 25 bags vs. each seed model with 25 bags
 
 composite_all_1 <- purrr::map_dfr(cv_splits_all$common_seed, function(x){
   acc <- classif_res %>%
@@ -245,6 +260,59 @@ bigrquery::bq_table(project = "world-fishing-827",
   bigrquery::bq_table_upload(values = composite_all_1,
                              fields = bigrquery::as_bq_fields(composite_all_1),
                              write_disposition = "WRITE_TRUNCATE")
+
+# Composite-3 with 25 bags vs. each seed model with 5 bags
+# ???
+
+# matrix_perm <- matrix(data = perm_seeds, nrow = 5, ncol = 5, byrow = TRUE)
+# composite_all_3 <- group_comparison(matrix_perm)
+
+x <- 1
+
+classif_res %>%
+  dplyr::filter(bag_group == x) %>%
+  dplyr::group_by(.)
+
+  dplyr::select(indID, pred_class) %>%
+
+
+  data %>%
+  dplyr::group_by(.data$indID) %>%
+  dplyr::add_count(.data$pred_class, sort = TRUE) %>%
+  dplyr::slice(1) %>% # we're dealing with ties by forcing to pick one
+  dplyr::mutate(class_mode = .data$pred_class,
+                class_prop = n / num_common_seeds) %>%
+  dplyr::select(-c(.data$pred_class, n, .data$thres, .data$common_seed))
+
+
+composite_all_1 <- purrr::map2_dfr(cv_splits_all$common_seed, 1:5, function(x,y){
+  acc <- classif_res %>%
+    dplyr::filter(common_seed == x) %>%
+    dplyr::select(indID, pred_class) %>%
+    dplyr::right_join(by = "indID", y = pred_class_composite) %>%
+    yardstick::accuracy(truth = as.factor(class_mode), estimate = as.factor(pred_class)) %>%
+    dplyr::select(.estimate)
+})
+
+
+group_comparison <- function(matrix_perm){
+  dplyr::as_tibble(
+    apply(X = matrix_perm, MARGIN = 1, FUN = function(x){
+      classif_res %>%
+        dplyr::filter(.data$common_seed %in% x == TRUE) %>%
+        dplyr::group_by(.data$indID) %>%
+        dplyr::add_count(.data$pred_class, sort = TRUE) %>%
+        dplyr::slice(1) %>%
+        dplyr::mutate(class_mode_group = .data$pred_class) %>%
+        dplyr::ungroup() %>%
+        dplyr::select(indID, class_mode_group) %>%
+        dplyr::right_join(by = "indID", y = pred_class_composite) %>%
+        yardstick::accuracy(truth = as.factor(class_mode), estimate = as.factor(class_mode_group)) %>%
+        dplyr::select(.estimate) %>%
+        dplyr::pull()
+    })
+  )
+}
 
 
 ### Now comparing composite model mode with 5 3-composite model modes

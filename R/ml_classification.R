@@ -33,7 +33,7 @@
 #' @export
 #'
 
-ml_classification <- function(data, common_seed_tibble, steps = 1000,
+ml_classification_sensitivity <- function(data, common_seed_tibble, steps = 1000,
                               plotting = FALSE, filepath = NULL,
                               threshold = seq(0, .99, by = 0.01), eps = 0.01) {
 
@@ -46,16 +46,17 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
       stop("The directory to save the plot does not exist.")
   }
 
-  predictions_set  <- avg_confscore(data)
+  predictions_set  <- avg_confscore_sensitivity(data)
 
   average_assessment_per_seed <- predictions_set %>%
     dplyr::filter(.data$holdout == 0)
 
   # getting calibrated thresholds based on the dedpul algorithm
   thresholds <- common_seed_tibble %>%
-    dplyr::mutate(thres = purrr::map_dbl(.data$common_seed, function(x) {
+    tidyr::crossing(tibble::tibble(bag_group = unique(average_assessment_per_seed$bag_group))) %>%
+    dplyr::mutate(thres = purrr::map2_dbl(.data$common_seed, .data$bag_group, function(x, y) {
       subavg_pred <- average_assessment_per_seed %>%
-        dplyr::filter(.data$common_seed == x)
+        dplyr::filter(.data$common_seed == x & .data$bag_group == y)
       if (plotting == TRUE) {
         filename <- paste0(filepath, paste0("D_alpha_common_seed_", x, ".png"))
       }else{
@@ -71,7 +72,7 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
     }))
 
   pred_class_seed <- predictions_set %>%
-    dplyr::left_join(thresholds, by = "common_seed")  %>%
+    dplyr::left_join(thresholds, by = c("common_seed", "bag_group"))  %>%
     dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
                                                .data$thres, function(x, y) {
       ifelse(x > y, 1, 0)}))
@@ -99,10 +100,10 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 #' @export
 #'
 
-avg_confscore <- function(data) {
+avg_confscore_sensitivity <- function(data) {
 
   confscore_df <- data %>%
-    dplyr::select(.data$common_seed, .data$prediction_output) %>%
+    dplyr::select(.data$common_seed, .data$bag_group, .data$prediction_output) %>%
     tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
     # a tibble per cell
     tidyr::unnest(.data$prediction_output) %>% # everything is a regular tibble
