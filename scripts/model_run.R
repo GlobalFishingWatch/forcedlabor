@@ -120,15 +120,15 @@ rf_spec <-
 ########### training and testing scheme ########################################
 
 ## defining some parameter values ##
-num_folds <- 10 # number of folds
-num_bags <- 5 #10,20,30,50,100 # Keep this low for now for speed,
+num_folds <- 2 # number of folds
+num_bags <- 2 #10,20,30,50,100 # Keep this low for now for speed,
 # but can crank up later
 down_sample_ratio <- 1 # downsampling ratio
 # Set common seed to use anywhere that uses random numbers
 # We'll vary this to get confidence intervals
 # Eventually we can crank this up (16,32,64), but keep it to 2 for now for
 # testing
-num_common_seeds <- 15
+num_common_seeds <- 2
 common_seed_tibble <- tibble::tibble(common_seed =
                                        seq(1:num_common_seeds) * 101)
 
@@ -145,7 +145,7 @@ bag_runs <- common_seed_tibble %>%
 parallel_plan <- "multicore" # multisession if running from RStudio, or
 # multicore if from Linux, Mac and plain R, or
 # psock if multisession is not working well and you need to try something else
-free_cores <- 1 # add more if you need to do many things at the same time
+free_cores <- 2 # add more if you need to do many things at the same time
 
 
 ## CROSS VALIDATION ##
@@ -167,7 +167,7 @@ train_pred_proba <- ml_training(training_df = training_df, fl_rec = fl_rec,
                                 cv_splits_all = cv_splits_all,
                                 bag_runs = bag_runs,
                                 down_sample_ratio = down_sample_ratio,
-                                num_grid = 5, parallel_plan = parallel_plan,
+                                num_grid = 2, parallel_plan = parallel_plan,
                                 free_cores = free_cores)
 tictoc::toc()
 
@@ -204,6 +204,88 @@ classif_res <- ml_classification(data = cv_model_res, common_seed_tibble,
                                  filepath = NULL,
                                  threshold = seq(0, .99, by = 0.01), eps = 0.01)
 tictoc::toc()
+
+####### Confidence intervals ###########################
+
+# Trying something new:
+# No need to merge everything in one data frame
+# For each seed, go by ID. Take all its scores from cv_model_res.
+# Fit Beta distribution
+# If classif 1, then confidence is 1 - CDF
+# If classif 0, then confidence is CDF
+# I'll first use everything from all seeds because I need data
+
+toto <- data %>%
+  dplyr::select(.data$common_seed, .data$prediction_output) %>%
+  tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
+  # a tibble per cell
+  tidyr::unnest(.data$prediction_output)
+
+purrr::pmap_dfr(classif_res, function(common_seed, indID){
+
+  beta_par <- EnvStats::ebeta(toto$.pred_1[which(toto$indID == indID & toto$common_seed == common_seed)], method = "mle")$parameters
+
+  return(beta_par)
+})
+
+
+classif_res_subset <- classif_res[1:10,]
+
+classif_res <-
+classif_res %>%
+  mutate(confidence = purrr::map2_dbl(.data$common_seed, .data$indID, function(x,y){
+
+    line_classif <- which(classif_res$common_seed == x & classif_res$indID == y)
+
+    beta_par <- EnvStats::ebeta(toto$.pred_1[which(toto$indID == y & toto$common_seed == x)], method = "mle")$parameters
+
+    if (classif_res$pred_class[line_classif] == 1){
+      conf <- pbeta(q = classif_res$thres[classif_res$common_seed == x & classif_res$indID == y],
+                    shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
+
+    }else{
+      conf <- pbeta(q = classif_res$thres[classif_res$common_seed == x & classif_res$indID == y],
+                    shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
+    }
+
+    return(conf)
+
+  }))
+
+
+saveRDS(classif_res, "classif_res.rds")
+
+ggplot2::ggplot(data = classif_res, aes(x = confidence)) +
+  ggplot2::geom_density()
+
+ggplot2::ggplot(data = classif_res, aes(x = confidence, fill = as.factor(pred_class))) +
+  ggplot2::geom_histogram()
+
+
+# purrr::map2_dbl(classif_res$common_seed[1:10], classif_res$indID[1:10], function(x,y){
+#
+#   line_classif <- which(classif_res$common_seed == x & classif_res$indID == y)
+#
+#   beta_par <- EnvStats::ebeta(toto$.pred_1[which(toto$indID == y & toto$common_seed == x)], method = "mle")$parameters
+#
+#   if (classif_res$pred_class[line_classif] == 1){
+#     conf <- pbeta(q = classif_res$thres[classif_res$common_seed == x & classif_res$indID == y],
+#           shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
+#
+#   }else{
+#     conf <- pbeta(q = classif_res$thres[classif_res$common_seed == x & classif_res$indID == y],
+#                   shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
+#   }
+# #
+# #   p = seq(0, 1, length = 100)
+# #   plot(p, dbeta(p, beta_par[1], beta_par[2]), "l")
+#
+#
+#
+#   return(conf)
+#
+# })
+
 
 # Computes recall for assessment sets and specificity for holdout non offenders
 

@@ -1,4 +1,3 @@
-
 #' Computes binary classification via DEDPUL
 #'
 #' @description For each common seed and vessel-year, it computes a binary
@@ -46,6 +45,13 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
       stop("The directory to save the plot does not exist.")
   }
 
+  # unnesting the tibble inside the tibble
+  scores_df <- data %>%
+    dplyr::select(.data$common_seed, .data$prediction_output) %>%
+    tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
+    # a tibble per cell
+    tidyr::unnest(.data$prediction_output)
+
   predictions_set  <- avg_confscore(data)
 
   average_assessment_per_seed <- predictions_set %>%
@@ -70,12 +76,84 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 
     }))
 
+
   pred_class_seed <- predictions_set %>%
     dplyr::left_join(thresholds, by = "common_seed")  %>%
     dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
                                                .data$thres, function(x, y) {
-      ifelse(x > y, 1, 0)}))
+                                                 ifelse(x > y, 1, 0)}))
+    %>%
+    mutate(confidence = purrr::map2_dbl(.data$common_seed, .data$indID, function(x,y){
 
+      line_classif <- which(.data$common_seed == x & .data$indID == y)
+
+      # beta fitting
+      beta_par <- EnvStats::ebeta(scores_df$.pred_1[which(scores_df$indID == y & scores_df$common_seed == x)], method = "mle")$parameters
+
+      if (.data$pred_class[line_classif] == 1){
+        conf <- pbeta(q = .data$thres[line_classif],
+                      shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
+
+      }else{
+        conf <- pbeta(q = .data$thres[line_classif],
+                      shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
+      }
+
+      return(conf)
+
+    }))
+
+
+
+  # # There's one result per common_seed and indID for holdout == 0 and
+  # # two results (one per fold) per common_seed and indID
+  #
+  # # Trying to do this quicker:
+  # # 1. The score ID will be first equal to RF + the seed + A
+  # # 2. For holdouts, one will be B instead of A
+  # # 3. Replace for prettier stuff
+  #
+  # toto %>%
+  #   dplyr::mutate(scoreID = paste0("RF-",common_seed, "-A")) %>%
+  #   dplyr::mutate(score2 = paste0(scoreID, "-", indID)) -> toto
+  #
+  # toto2 <- toto[1:60000,]
+  # toto2 %>%
+  #   dplyr::mutate(test =
+  #                   purrr::map(score2, function(x){
+  #                     titi <- toto2 %>%
+  #                       dplyr::filter(score2 == x)
+  #                     if (nrow(titi) > 1){
+  #                       titi %>%
+  #                         dplyr::mutate(score3 = 1:nrow(titi))
+  #                     }
+  #                   })) -> new_test
+  #
+  #
+  # sum(duplicated(toto$score2) == TRUE)
+  #
+  # toto %>%
+  #   dplyr::filter(holdout == 1)
+
+
+#     dplyr::mutate(test =
+#     purrr::map2_dbl(.x = .data$common_seed, .y = indID, .f = function(x,y){
+#       toto %>%
+#         dplyr::filter(common_seed == x & indID == y) -> titi
+# return(nrow(titi))
+#     }))
+
+#
+#   toto %>%
+#     # colnames()
+#     tidyr::pivot_wider(id_expand = .pred_1)
+#
+#
+#   titi <- pred_class_seed %>%
+#     dplyr::left_join(toto, by = c("common_seed", "indID", "known_offender",
+#                            "possible_offender", "known_non_offender",
+#                            "event_ais_year", "holdout"))
+#
   return(pred_class_seed)
 
 }
