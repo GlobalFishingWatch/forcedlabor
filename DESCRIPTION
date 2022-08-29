@@ -13,6 +13,7 @@ RoxygenNote: 7.1.2
 Imports:
     magrittr,
     dplyr,
+    EnvStats,
     forcats,
     furrr,
     future,

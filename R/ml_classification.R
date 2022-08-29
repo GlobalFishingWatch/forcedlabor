@@ -27,6 +27,8 @@
 #'
 #' @importFrom purrr map_dbl
 #' @importFrom purrr map2_dbl
+#' @importFrom EnvStats ebeta
+#' @importFrom stats pbeta
 #' @import dplyr
 #'
 #' @export
@@ -81,8 +83,7 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
     dplyr::left_join(thresholds, by = "common_seed")  %>%
     dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
                                                .data$thres, function(x, y) {
-                                                 ifelse(x > y, 1, 0)}))
-    %>%
+                                                 ifelse(x > y, 1, 0)})) %>%
     mutate(confidence = purrr::map2_dbl(.data$common_seed, .data$indID, function(x,y){
 
       line_classif <- which(.data$common_seed == x & .data$indID == y)
@@ -91,11 +92,11 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
       beta_par <- EnvStats::ebeta(scores_df$.pred_1[which(scores_df$indID == y & scores_df$common_seed == x)], method = "mle")$parameters
 
       if (.data$pred_class[line_classif] == 1){
-        conf <- pbeta(q = .data$thres[line_classif],
+        conf <- stats::pbeta(q = .data$thres[line_classif],
                       shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
 
       }else{
-        conf <- pbeta(q = .data$thres[line_classif],
+        conf <- stats::pbeta(q = .data$thres[line_classif],
                       shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
       }
 
