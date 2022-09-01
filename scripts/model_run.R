@@ -120,15 +120,15 @@ rf_spec <-
 ########### training and testing scheme ########################################
 
 ## defining some parameter values ##
-num_folds <- 2 # number of folds
-num_bags <- 2 #10,20,30,50,100 # Keep this low for now for speed,
+num_folds <- 10 # number of folds
+num_bags <- 10 #10,20,30,50,100 # Keep this low for now for speed,
 # but can crank up later
 down_sample_ratio <- 1 # downsampling ratio
 # Set common seed to use anywhere that uses random numbers
 # We'll vary this to get confidence intervals
 # Eventually we can crank this up (16,32,64), but keep it to 2 for now for
 # testing
-num_common_seeds <- 2
+num_common_seeds <- 5
 common_seed_tibble <- tibble::tibble(common_seed =
                                        seq(1:num_common_seeds) * 101)
 
@@ -145,7 +145,7 @@ bag_runs <- common_seed_tibble %>%
 parallel_plan <- "multicore" # multisession if running from RStudio, or
 # multicore if from Linux, Mac and plain R, or
 # psock if multisession is not working well and you need to try something else
-free_cores <- 2 # add more if you need to do many things at the same time
+free_cores <- 1 # add more if you need to do many things at the same time
 
 
 ## CROSS VALIDATION ##
@@ -167,7 +167,7 @@ train_pred_proba <- ml_training(training_df = training_df, fl_rec = fl_rec,
                                 cv_splits_all = cv_splits_all,
                                 bag_runs = bag_runs,
                                 down_sample_ratio = down_sample_ratio,
-                                num_grid = 2, parallel_plan = parallel_plan,
+                                num_grid = 5, parallel_plan = parallel_plan,
                                 free_cores = free_cores)
 tictoc::toc()
 
@@ -215,11 +215,25 @@ tictoc::toc()
 # If classif 0, then confidence is CDF
 # I'll first use everything from all seeds because I need data
 
-toto <- data %>%
+toto <- cv_model_res %>%
   dplyr::select(.data$common_seed, .data$prediction_output) %>%
   tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
   # a tibble per cell
   tidyr::unnest(.data$prediction_output)
+
+classif_res
+
+for (i in 396264:dim(classif_res)[1]){
+  print(i)
+  lines_scores <- which(toto$common_seed == classif_res$common_seed[i] & toto$indID == classif_res$indID[i])
+  predictions <- toto$.pred_1[lines_scores]
+  n <- length(predictions)
+  if (n < 2 || min(predictions) < 0 || max(predictions) > 1 || length(unique(predictions)) <
+      2)
+    stop(paste("'x' must contain at least 2 non-missing distinct values,",
+               "and all non-missing values of 'x' must be between 0 and 1."))
+
+}
 
 purrr::pmap_dfr(classif_res, function(common_seed, indID){
 
