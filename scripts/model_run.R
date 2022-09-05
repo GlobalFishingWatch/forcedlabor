@@ -73,12 +73,37 @@ training_df <- data_preprocess$training_set
 # save training_df for making summary figure (needs the fl indicators)
 # readr::write_csv(training_df,here::here("data","training_df.csv"))
 
-training_df <- training_df %>%
-  dplyr::select(-all_of(vars_remove))
+# training_df <- training_df %>%
+#   dplyr::select(-all_of(vars_remove))
 
-prediction_df <- data_preprocess$holdout_set
+training_df <- training_df %>%
+  dplyr::select(-all_of(vars_remove)) %>%
+  dplyr::mutate(gear = dplyr::if_else(
+    as.character(.data$gear) == "tuna_purse_seines",
+    "purse_seines", as.character(.data$gear))) %>%
+  dplyr::filter(.data$gear != "set_longlines") %>%
+  dplyr::mutate(gear = as.factor(.data$gear)) %>%
+  # dplyr::mutate(known_offender_2 = .data$known_offender) %>%  # for 2000 operation
+  # dplyr::mutate(known_offender = dplyr::if_else(
+  #   .data$year == 2020, 0, as.numeric(as.character(.data$known_offender_2)))
+  # ) %>%
+  dplyr::mutate(known_offender = as.factor(.data$known_offender))
+
+
+# prediction_df <- data_preprocess$holdout_set
 # readr::write_csv(prediction_df,here::here("data","holdout_df.csv"))
 
+prediction_df <- data_preprocess$holdout_set %>%
+  dplyr::mutate(gear = dplyr::if_else(
+    as.character(.data$gear) == "tuna_purse_seines",
+    "purse_seines", as.character(.data$gear))) %>%
+  dplyr::filter(.data$gear != "set_longlines")%>%
+  dplyr::mutate(gear = as.factor(.data$gear))  %>%
+  # dplyr::mutate(known_offender_2 = .data$known_offender) %>%  # for 2000 operation
+  # dplyr::mutate(known_offender = dplyr::if_else(
+  #   .data$year == 2020, 0, as.numeric(as.character(.data$known_offender_2)))
+  # ) %>%
+  dplyr::mutate(known_offender = as.factor(.data$known_offender))
 
 ################## writing the recipe ##########################################
 
@@ -207,74 +232,74 @@ tictoc::toc()
 
 ####### Confidence intervals ###########################
 
-# Trying something new:
-# No need to merge everything in one data frame
-# For each seed, go by ID. Take all its scores from cv_model_res.
-# Fit Beta distribution
-# If classif 1, then confidence is 1 - CDF
-# If classif 0, then confidence is CDF
-# I'll first use everything from all seeds because I need data
-
-toto <- cv_model_res %>%
-  dplyr::select(.data$common_seed, .data$prediction_output) %>%
-  tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
-  # a tibble per cell
-  tidyr::unnest(.data$prediction_output)
-
-classif_res
-
-for (i in 396264:dim(classif_res)[1]){
-  print(i)
-  lines_scores <- which(toto$common_seed == classif_res$common_seed[i] & toto$indID == classif_res$indID[i])
-  predictions <- toto$.pred_1[lines_scores]
-  n <- length(predictions)
-  if (n < 2 || min(predictions) < 0 || max(predictions) > 1 || length(unique(predictions)) <
-      2)
-    stop(paste("'x' must contain at least 2 non-missing distinct values,",
-               "and all non-missing values of 'x' must be between 0 and 1."))
-
-}
-
-purrr::pmap_dfr(classif_res, function(common_seed, indID){
-
-  beta_par <- EnvStats::ebeta(toto$.pred_1[which(toto$indID == indID & toto$common_seed == common_seed)], method = "mle")$parameters
-
-  return(beta_par)
-})
-
-
-classif_res_subset <- classif_res[1:10,]
-
-classif_res <-
-classif_res %>%
-  mutate(confidence = purrr::map2_dbl(.data$common_seed, .data$indID, function(x,y){
-
-    line_classif <- which(classif_res$common_seed == x & classif_res$indID == y)
-
-    beta_par <- EnvStats::ebeta(toto$.pred_1[which(toto$indID == y & toto$common_seed == x)], method = "mle")$parameters
-
-    if (classif_res$pred_class[line_classif] == 1){
-      conf <- pbeta(q = classif_res$thres[classif_res$common_seed == x & classif_res$indID == y],
-                    shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
-
-    }else{
-      conf <- pbeta(q = classif_res$thres[classif_res$common_seed == x & classif_res$indID == y],
-                    shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
-    }
-
-    return(conf)
-
-  }))
-
-
-saveRDS(classif_res, "classif_res.rds")
-
-ggplot2::ggplot(data = classif_res, aes(x = confidence)) +
-  ggplot2::geom_density()
-
-ggplot2::ggplot(data = classif_res, aes(x = confidence, fill = as.factor(pred_class))) +
-  ggplot2::geom_histogram()
-
+# # Trying something new:
+# # No need to merge everything in one data frame
+# # For each seed, go by ID. Take all its scores from cv_model_res.
+# # Fit Beta distribution
+# # If classif 1, then confidence is 1 - CDF
+# # If classif 0, then confidence is CDF
+# # I'll first use everything from all seeds because I need data
+#
+# toto <- cv_model_res %>%
+#   dplyr::select(.data$common_seed, .data$prediction_output) %>%
+#   tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
+#   # a tibble per cell
+#   tidyr::unnest(.data$prediction_output)
+#
+# classif_res
+#
+# for (i in 396264:dim(classif_res)[1]){
+#   print(i)
+#   lines_scores <- which(toto$common_seed == classif_res$common_seed[i] & toto$indID == classif_res$indID[i])
+#   predictions <- toto$.pred_1[lines_scores]
+#   n <- length(predictions)
+#   if (n < 2 || min(predictions) < 0 || max(predictions) > 1 || length(unique(predictions)) <
+#       2)
+#     stop(paste("'x' must contain at least 2 non-missing distinct values,",
+#                "and all non-missing values of 'x' must be between 0 and 1."))
+#
+# }
+#
+# purrr::pmap_dfr(classif_res, function(common_seed, indID){
+#
+#   beta_par <- EnvStats::ebeta(toto$.pred_1[which(toto$indID == indID & toto$common_seed == common_seed)], method = "mle")$parameters
+#
+#   return(beta_par)
+# })
+#
+#
+# classif_res_subset <- classif_res[1:10,]
+#
+# classif_res <-
+# classif_res %>%
+#   mutate(confidence = purrr::map2_dbl(.data$common_seed, .data$indID, function(x,y){
+#
+#     line_classif <- which(classif_res$common_seed == x & classif_res$indID == y)
+#
+#     beta_par <- EnvStats::ebeta(toto$.pred_1[which(toto$indID == y & toto$common_seed == x)], method = "mle")$parameters
+#
+#     if (classif_res$pred_class[line_classif] == 1){
+#       conf <- pbeta(q = classif_res$thres[classif_res$common_seed == x & classif_res$indID == y],
+#                     shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
+#
+#     }else{
+#       conf <- pbeta(q = classif_res$thres[classif_res$common_seed == x & classif_res$indID == y],
+#                     shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
+#     }
+#
+#     return(conf)
+#
+#   }))
+#
+#
+# saveRDS(classif_res, "classif_res.rds")
+#
+# ggplot2::ggplot(data = classif_res, aes(x = confidence)) +
+#   ggplot2::geom_density()
+#
+# ggplot2::ggplot(data = classif_res, aes(x = confidence, fill = as.factor(pred_class))) +
+#   ggplot2::geom_histogram()
+#
 
 # purrr::map2_dbl(classif_res$common_seed[1:10], classif_res$indID[1:10], function(x,y){
 #
@@ -306,18 +331,123 @@ ggplot2::ggplot(data = classif_res, aes(x = confidence, fill = as.factor(pred_cl
 perf_metrics <- ml_perf_metrics(data = classif_res,
                                 common_seed_tibble = common_seed_tibble)
 
+# perf_metrics
+# # A tibble: 5 × 3
+# common_seed recall_perf spec_perf
+# <dbl>       <dbl>     <dbl>
+#   1         101       0.933     0.981
+# 2         202       0.92      0.981
+# 3         303       0.92      0.981
+# 4         404       0.92      0.962
+# 5         505       0.933     0.962
+
+
 ##### Prediction summary: Classification between seeds #####
 # This is info we can give to external collaborators
 
 pred_class_stats <- ml_pred_summary(data = classif_res,
                                     num_common_seeds = num_common_seeds)
-pred_class_stats_composite <- pred_class_stats
+# pred_class_stats_composite <- pred_class_stats
 bigrquery::bq_table(project = "world-fishing-827",
-                    table = "pred_class_stats_composite15_bag1_1",
+                    table = "pred_class_stats_after_conf",
                     dataset = "scratch_rocio") %>%
   bigrquery::bq_table_upload(values = pred_class_stats,
                              fields = bigrquery::as_bq_fields(pred_class_stats),
                              write_disposition = "WRITE_TRUNCATE")
+
+bigrquery::bq_table(project = "world-fishing-827",
+                    table = "classif_res_after_conf",
+                    dataset = "scratch_rocio") %>%
+  bigrquery::bq_table_upload(values = classif_res,
+                             fields = bigrquery::as_bq_fields(classif_res),
+                             write_disposition = "WRITE_TRUNCATE")
+
+##### Now getting graphs from classif_res conf levels
+
+conflevels_fl <- glue::glue(
+  "SELECT
+      *
+    FROM
+      `scratch_rocio.classif_res_after_conf`
+"
+)
+
+conflevels_df <- fishwatchr::gfw_query(query = conflevels_fl, run_query = TRUE, con = con)$data
+
+ggplot2::ggplot(data = conflevels_df, aes(x = confidence)) +
+  ggplot2::geom_density() +
+  ggplot2::theme_bw()
+
+ggplot2::ggplot(data = conflevels_df, aes(x = confidence, fill = as.factor(pred_class))) +
+  ggplot2::geom_histogram() +
+  ggplot2::scale_fill_viridis_d(option = "C", end = 0.7) +
+  ggplot2::labs(fill = "predicted class") +
+  ggplot2::theme_bw()
+
+
+predclass_fl <- glue::glue(
+  "SELECT
+      *
+    FROM
+      `scratch_rocio.pred_class_stats_after_conf`
+"
+)
+
+predclass_df <- fishwatchr::gfw_query(query = predclass_fl, run_query = TRUE, con = con)$data
+sum(predclass_df$class_mode == 1)
+sum(predclass_df$class_mode == 0)
+
+predclass_year <- predclass_df %>%
+  mutate(year = stringr::str_sub(indID, -4))
+
+pred_table <- table(predclass_year$class_mode, predclass_year$year)
+pred_table[2,]/(pred_table[1,] + pred_table[2,])
+# 2012      2013      2014      2015      2016      2017      2018      2019      2020      2021
+# 0.3680680 0.2582074 0.2615610 0.2882370 0.3049037 0.3099424 0.3032499 0.3002356 0.2970943 0.3040954
+# Gavin's paper says between 10 and 20%
+
+conflevels_class <- conflevels_df %>%
+  dplyr::group_by(.data$pred_class) %>%
+  dplyr::summarise(mean = mean(confidence), median = median(confidence),
+                   min = min(confidence), max = max(confidence),
+                   q25 = quantile(confidence,0.25),
+                   q75 = quantile(confidence, 0.75),
+                   n = n())
+
+
+whole_set <- training_df %>%
+  rbind.data.frame(prediction_df) %>%
+  dplyr::select(flag, gear, indID) %>%
+  dplyr::left_join(conflevels_df, by = "indID")
+
+# gear
+
+gears <- levels(whole_set$gear)
+
+gear_perf <- gears %>%
+  purrr::map(.f = function(x){
+    whole_set %>%
+      dplyr::filter(.data$gear == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::summarise(mean = mean(confidence), median = median(confidence),
+                       min = min(confidence), max = max(confidence),
+                       q25 = quantile(confidence,0.25),
+                       q75 = quantile(confidence, 0.75),
+                       n = n())
+  })
+
+
+
+conflevels_gear <- conflevels_df %>%
+  dplyr::group_by(gear)
+
+  dplyr::add_count(.data$pred_class, sort = TRUE) %>%
+  dplyr::slice(1) %>% # we're dealing with ties by forcing to pick one
+  dplyr::mutate(class_mode = .data$pred_class,
+                class_prop = n / num_common_seeds) %>%
+  dplyr::select(-c(.data$pred_class, n, .data$thres, .data$common_seed))
+
+
 
 
 ### Now comparing composite model mode with outputs from each model

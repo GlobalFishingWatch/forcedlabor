@@ -90,7 +90,7 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 
       predictions <- scores_df$.pred_1[which(scores_df$indID == y & scores_df$common_seed == x)]
 
-      if (length(predictions) > 1 && (all(predictions) == 1 || all(predictions) == 0)){
+      if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
         conf <- 1
       }else{
 
