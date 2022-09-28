@@ -246,6 +246,8 @@ calibrated_threshold <- function(data, steps = 1000, plotting = FALSE,
   # estimating alpha
   alpha <- dedpul_estimation(data, steps, plotting, filename)
 
+  print(alpha)
+
   # keep only the unlabeled
   data <- data %>%
     dplyr::filter(.data$known_offender == 0) %>%
@@ -349,10 +351,10 @@ kernel_unlabeled <- function(data) {
   # density kernels and interpolation to the unlabeled values
   den_pos <- KernSmooth::bkde(pred_pos$pred_mean)
   den_pos_u <- stats::approx(den_pos$x, den_pos$y,
-                             xout = sort(pred_unl$pred_mean))
+                             xout = sort(pred_unl$pred_mean), rule = 2)
   den_unl <- KernSmooth::bkde(pred_unl$pred_mean)
   den_unl_u <- stats::approx(den_unl$x, den_unl$y,
-                             xout = sort(pred_unl$pred_mean))
+                             xout = sort(pred_unl$pred_mean), rule = 2)
 
   return(list(f_yp = den_pos_u$y, f_yu = den_unl_u$y, y_u = y_u))
 

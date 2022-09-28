@@ -55,3 +55,30 @@ ml_perf_metrics <- function(data, common_seed_tibble) {
 
   return(perf_metrics)
 }
+
+
+ml_perf_metrics_composite <- function(data) {
+
+   recall_stat <-  data %>%
+        dplyr::filter(.data$holdout == 0) %>%
+        yardstick::recall(truth = factor(.data$known_offender,
+                                         levels = c(1, 0)),
+                          estimate = factor(.data$class_mode,
+                                            levels = c(1, 0))) %>%
+        dplyr::select(.data$.estimate) %>%
+        purrr::pluck(1)
+
+  specif_stat <- data %>%
+        dplyr::filter(.data$holdout == 1 & .data$known_non_offender == 1 &
+                        .data$event_ais_year == 1) %>%
+        yardstick::spec(truth = factor(.data$known_offender, levels = c(1, 0)),
+                        estimate = factor(.data$class_mode,
+                                          levels = c(1, 0))) %>%
+        dplyr::select(.data$.estimate) %>%
+        purrr::pluck(1)
+
+
+  perf_metrics <- cbind(recall = recall_stat, specif = specif_stat)
+
+  return(perf_metrics)
+}

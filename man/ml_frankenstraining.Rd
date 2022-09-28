@@ -41,7 +41,7 @@ or psock - this last one may need calling libraries inside)}
 common seed}
 
 \item{prediction_df}{hold-out data frame with possible offenders and non
-offenders to predict on}
+offenders to predict on. If NULL, then only predict on the training set}
 }
 \value{
 an object with predicted values and fitted models

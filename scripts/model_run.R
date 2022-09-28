@@ -230,6 +230,14 @@ classif_res <- ml_classification(data = cv_model_res, common_seed_tibble,
                                  threshold = seq(0, .99, by = 0.01), eps = 0.01)
 tictoc::toc()
 
+# alpha per seed
+# [1] 0.2982983
+# [1] 0.2652653
+# [1] 0.2752753
+# [1] 0.3343343
+# [1] 0.3003003
+
+
 ####### Confidence intervals ###########################
 
 # # Trying something new:
@@ -342,6 +350,8 @@ perf_metrics <- ml_perf_metrics(data = classif_res,
 # 5         505       0.933     0.962
 
 
+
+
 ##### Prediction summary: Classification between seeds #####
 # This is info we can give to external collaborators
 
@@ -384,6 +394,22 @@ ggplot2::ggplot(data = conflevels_df, aes(x = confidence, fill = as.factor(pred_
   ggplot2::labs(fill = "predicted class") +
   ggplot2::theme_bw()
 
+# number of predicted offenders with confidence above 0.8
+
+counting <- conflevels_df %>%
+  dplyr::group_by(.data$pred_class) %>%
+  dplyr::summarise(N = dplyr::n())
+
+count_conf <- conflevels_df %>%
+  dplyr::group_by(.data$pred_class) %>%
+  dplyr::filter(confidence > 0.8) %>%
+  dplyr::summarise(n = dplyr::n())
+
+counting %>% dplyr::left_join(count_conf, by = "pred_class") %>%
+  dplyr::mutate(prop = n/N)
+
+
+
 
 predclass_fl <- glue::glue(
   "SELECT
@@ -397,14 +423,36 @@ predclass_df <- fishwatchr::gfw_query(query = predclass_fl, run_query = TRUE, co
 sum(predclass_df$class_mode == 1)
 sum(predclass_df$class_mode == 0)
 
+ml_perf_metrics_composite(predclass_df)
+
 predclass_year <- predclass_df %>%
-  mutate(year = stringr::str_sub(indID, -4))
+  dplyr::mutate(year = stringr::str_sub(indID, -4))
 
 pred_table <- table(predclass_year$class_mode, predclass_year$year)
 pred_table[2,]/(pred_table[1,] + pred_table[2,])
-# 2012      2013      2014      2015      2016      2017      2018      2019      2020      2021
-# 0.3680680 0.2582074 0.2615610 0.2882370 0.3049037 0.3099424 0.3032499 0.3002356 0.2970943 0.3040954
+# 2012      2013      2014      2015      2016      2017      2018      2019
+# 0.3338942 0.2402733 0.2486760 0.2790454 0.2972771 0.3027553 0.2999466 0.3003350
+# 2020      2021
+# 0.2921341 0.2926930
+
 # Gavin's paper says between 10 and 20%
+
+whole_set_stats <- training_df %>%
+  rbind.data.frame(prediction_df) %>%
+  dplyr::select(flag, gear, indID) %>%
+  dplyr::left_join(predclass_df, by = "indID")
+
+gear_table <- table(whole_set_stats$class_mode, whole_set_stats$gear)
+gear_table[2,]/(gear_table[1,] + gear_table[2,])
+
+
+Asia <- c("CHN", "JPN", "KOR", "MYS", "THA", "TWN", "RUS")
+
+whole_set_stats$asia <- 0
+whole_set_stats$asia[which(whole_set_stats$flag %in% Asia)] <- 1
+region_table <- table(whole_set_stats$class_mode, whole_set_stats$asia)
+region_table[2,]/(region_table[1,] + region_table[2,])
+
 
 conflevels_class <- conflevels_df %>%
   dplyr::group_by(.data$pred_class) %>%
@@ -412,13 +460,15 @@ conflevels_class <- conflevels_df %>%
                    min = min(confidence), max = max(confidence),
                    q25 = quantile(confidence,0.25),
                    q75 = quantile(confidence, 0.75),
-                   n = n())
+                   n = dplyr::n())
 
 
 whole_set <- training_df %>%
   rbind.data.frame(prediction_df) %>%
   dplyr::select(flag, gear, indID) %>%
   dplyr::left_join(conflevels_df, by = "indID")
+
+
 
 # gear
 
@@ -433,21 +483,278 @@ gear_perf <- gears %>%
                        min = min(confidence), max = max(confidence),
                        q25 = quantile(confidence,0.25),
                        q75 = quantile(confidence, 0.75),
-                       n = n())
+                       n = dplyr::n())
+  })
+
+# drifting longlines
+
+# [[1]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.877  0.970 0.480     1 0.766  1.00 23746
+# 2          1 0.947  0.999 0.479     1 0.963  1    82694
+
+
+# purse seines
+# [[2]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.956  1.00  0.493     1 0.985  1     9143
+# 2          1 0.950  0.997 0.492     1 0.952  1.00 17597
+
+
+# squid jigger
+# [[3]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.808  0.840 0.501     1 0.655 0.975  1732
+# 2          1 0.978  1.00  0.491     1 0.996 1     29103
+
+
+# trawlers
+# [[4]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75      n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl>  <int>
+#   1          0 0.986  1     0.499     1 1.00  1     350283
+# 2          1 0.872  0.948 0.491     1 0.769 0.998  27967
+
+gears %>%
+  purrr::map(.f = function(x){
+    whole_set %>%
+      dplyr::filter(.data$gear == x) %>%
+      ml_perf_metrics(common_seed_tibble = common_seed_tibble)
   })
 
 
 
-conflevels_gear <- conflevels_df %>%
-  dplyr::group_by(gear)
+# number of predicted offenders with confidence above 0.8
 
-  dplyr::add_count(.data$pred_class, sort = TRUE) %>%
-  dplyr::slice(1) %>% # we're dealing with ties by forcing to pick one
-  dplyr::mutate(class_mode = .data$pred_class,
-                class_prop = n / num_common_seeds) %>%
-  dplyr::select(-c(.data$pred_class, n, .data$thres, .data$common_seed))
+counting <- whole_set %>%
+  dplyr::group_by(.data$pred_class) %>%
+  dplyr::summarise(N = dplyr::n())
+
+count_conf <- whole_set %>%
+  dplyr::group_by(.data$pred_class) %>%
+  dplyr::filter(confidence > 0.8) %>%
+  dplyr::summarise(n = dplyr::n())
+
+counting %>% dplyr::left_join(count_conf, by = "pred_class") %>%
+  dplyr::mutate(prop = n/N)
+
+gear_conf <- gears %>%
+  purrr::map(.f = function(x){
+    count_conf_gear <- whole_set %>%
+      dplyr::filter(.data$gear == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::filter(confidence > 0.8) %>%
+      dplyr::summarise(n = dplyr::n())
+    counting_gear <- whole_set %>%
+      dplyr::filter(.data$gear == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::summarise(N = dplyr::n())
+
+    counting_gear %>% dplyr::left_join(count_conf_gear, by = "pred_class") %>%
+      dplyr::mutate(prop = n/N)
+})
+
+  #     dplyr::summarise(mean = mean(confidence), median = median(confidence),
+  #                      min = min(confidence), max = max(confidence),
+  #                      q25 = quantile(confidence,0.25),
+  #                      q75 = quantile(confidence, 0.75),
+  #                      n = dplyr::n())
+  # })
 
 
+
+# region
+
+Asia <- c("CHN", "JPN", "KOR", "MYS", "THA", "TWN", "RUS")
+
+whole_set$asia <- 0
+whole_set$asia[which(whole_set$flag %in% Asia)] <- 1
+
+region <- c(0,1)
+
+region_perf <- region %>%
+  purrr::map(.f = function(x){
+    whole_set %>%
+      dplyr::filter(.data$asia == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::summarise(mean = mean(confidence), median = median(confidence),
+                       min = min(confidence), max = max(confidence),
+                       q25 = quantile(confidence,0.25),
+                       q75 = quantile(confidence, 0.75),
+                       n = dplyr::n())
+  })
+
+# Non Asia
+# [[1]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75      n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl>  <int>
+#   1          0 0.984  1     0.487     1 1.00   1    358469
+# 2          1 0.911  0.990 0.491     1 0.868  1.00  54556
+
+
+# Asia
+# [[2]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75      n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl>  <int>
+#   1          0 0.898  0.998 0.480     1 0.814     1  26435
+# 2          1 0.955  0.999 0.479     1 0.976     1 102805
+
+region %>%
+  purrr::map(.f = function(x){
+    whole_set %>%
+      dplyr::filter(.data$asia == x) %>%
+      ml_perf_metrics(common_seed_tibble = common_seed_tibble)
+  })
+
+
+region_conf <- region %>%
+  purrr::map(.f = function(x){
+    count_conf_region <- whole_set %>%
+      dplyr::filter(.data$asia == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::filter(confidence > 0.8) %>%
+      dplyr::summarise(n = dplyr::n())
+    counting_region <- whole_set %>%
+      dplyr::filter(.data$asia == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::summarise(N = dplyr::n())
+
+    counting_region %>% dplyr::left_join(count_conf_region, by = "pred_class") %>%
+      dplyr::mutate(prop = n/N)
+  })
+
+
+
+# gear-region
+
+whole_set$gear_region <- paste0(whole_set$gear, "-", whole_set$asia)
+
+gearregion <- unique(whole_set$gear_region)
+
+gearregion_perf <- gearregion %>%
+  purrr::map(.f = function(x){
+    whole_set %>%
+      dplyr::filter(.data$gear_region == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::summarise(mean = mean(confidence), median = median(confidence),
+                       min = min(confidence), max = max(confidence),
+                       q25 = quantile(confidence,0.25),
+                       q75 = quantile(confidence, 0.75),
+                       n = dplyr::n())
+  })
+
+# trawlers-Asia
+# [[1]]
+# A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.941  1     0.499     1 0.973 1     17327
+# 2          1 0.891  0.965 0.493     1 0.816 0.999 14028
+
+
+# trawlers-nonAsia
+# [[2]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75      n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl>  <int>
+#   1          0 0.989  1     0.500     1 1     1     332956
+# 2          1 0.852  0.924 0.491     1 0.722 0.997  13939
+
+
+
+# squid_jigger-Asia
+# [[3]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.872  0.958 0.503     1 0.763 0.998   449
+# 2          1 0.990  1.00  0.491     1 0.998 1     26326
+#
+
+
+
+# drifting_longlines-Asia
+# [[4]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.810  0.833 0.480     1 0.668 0.977  8205
+# 2          1 0.956  0.999 0.479     1 0.976 1     57420
+
+
+
+# drifting_longlines-nonAsia
+# [[5]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.912  0.996 0.487     1 0.871  1    15541
+# 2          1 0.928  0.996 0.492     1 0.915  1.00 25274
+
+
+
+# purse_seines-Asia
+# [[6]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.886  0.998 0.493     1 0.786  1      454
+# 2          1 0.951  0.997 0.498     1 0.952  1.00  5031
+
+
+
+# purse_seines-nonAsia
+# [[7]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.959  1.00  0.498     1 0.988  1     8689
+# 2          1 0.949  0.997 0.492     1 0.951  1.00 12566
+
+
+# squid_jigger-nonAsia
+# [[8]]
+# # A tibble: 2 × 8
+# pred_class  mean median   min   max   q25   q75     n
+# <dbl> <dbl>  <dbl> <dbl> <dbl> <dbl> <dbl> <int>
+#   1          0 0.785  0.797 0.501     1 0.636 0.939  1283
+# 2          1 0.868  0.940 0.493     1 0.764 0.995  2777
+
+
+gearregion %>%
+  purrr::map(.f = function(x){
+    whole_set %>%
+      dplyr::filter(.data$gear_region == x) %>%
+      ml_perf_metrics(common_seed_tibble = common_seed_tibble)
+  })
+
+
+
+
+gearregion_conf <- gearregion %>%
+  purrr::map(.f = function(x){
+    count_conf_gearregion <- whole_set %>%
+      dplyr::filter(.data$gear_region == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::filter(confidence > 0.8) %>%
+      dplyr::summarise(n = dplyr::n())
+    counting_gearregion <- whole_set %>%
+      dplyr::filter(.data$gear_region == x) %>%
+      dplyr::group_by(.data$pred_class) %>%
+      dplyr::summarise(N = dplyr::n())
+
+    counting_gearregion %>% dplyr::left_join(count_conf_gearregion, by = "pred_class") %>%
+      dplyr::mutate(prop = n/N)
+  })
 
 
 ### Now comparing composite model mode with outputs from each model
