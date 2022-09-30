@@ -13,6 +13,7 @@
 #' vessel was identified as non offender by inspections).
 #' @param common_seed_tibble tibble with one column containing all the common
 #' seeds
+#' @param specif If TRUE (default), specificity is computed
 #' @return tibble with recall and specificity per seed
 #'
 #' @importFrom purrr map_dbl
@@ -24,7 +25,7 @@
 #' @export
 #'
 
-ml_perf_metrics <- function(data, common_seed_tibble) {
+ml_perf_metrics <- function(data, common_seed_tibble, specif = TRUE) {
 
   recall_seed <- common_seed_tibble %>%
     dplyr::mutate(recall_perf = purrr::map_dbl(.data$common_seed, function(x) {
@@ -38,20 +39,26 @@ ml_perf_metrics <- function(data, common_seed_tibble) {
         purrr::pluck(1)
     }))
 
-  specif_seed <- common_seed_tibble %>%
-    dplyr::mutate(spec_perf = purrr::map_dbl(.data$common_seed, function(x) {
-      data %>%
-        dplyr::filter(.data$holdout == 1 & .data$known_non_offender == 1 &
-                        .data$event_ais_year == 1 & .data$common_seed == x) %>%
-        yardstick::spec(truth = factor(.data$known_offender, levels = c(1, 0)),
-                        estimate = factor(.data$pred_class,
-                                          levels = c(1, 0))) %>%
-        dplyr::select(.data$.estimate) %>%
-        purrr::pluck(1)
-    }))
+  if (specif == TRUE){
 
-  perf_metrics <- recall_seed %>%
-    dplyr::full_join(specif_seed, by = "common_seed")
+    specif_seed <- common_seed_tibble %>%
+      dplyr::mutate(spec_perf = purrr::map_dbl(.data$common_seed, function(x) {
+        data %>%
+          dplyr::filter(.data$holdout == 1 & .data$known_non_offender == 1 &
+                          .data$event_ais_year == 1 & .data$common_seed == x) %>%
+          yardstick::spec(truth = factor(.data$known_offender, levels = c(1, 0)),
+                          estimate = factor(.data$pred_class,
+                                            levels = c(1, 0))) %>%
+          dplyr::select(.data$.estimate) %>%
+          purrr::pluck(1)
+      }))
+
+    perf_metrics <- recall_seed %>%
+      dplyr::full_join(specif_seed, by = "common_seed")
+
+  }else{
+    perf_metrics <- recall_seed
+  }
 
   return(perf_metrics)
 }

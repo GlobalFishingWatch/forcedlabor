@@ -53,65 +53,159 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
     tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
     # a tibble per cell
     tidyr::unnest(.data$prediction_output)
+#
+#   predictions_set  <- avg_confscore(data)
 
-  predictions_set  <- avg_confscore(data)
-
-  average_assessment_per_seed <- predictions_set %>%
+  avgscore_df <- data %>%
+    dplyr::select(.data$prediction_output) %>%
+    tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
+    # a tibble per cell
+    tidyr::unnest(.data$prediction_output) %>% # everything is a regular tibble
+    dplyr::group_by(dplyr::across(-.data$.pred_1)) %>% # group by everything
+    # except .pred_1 (only common_seed and indID actually matter but the other
+    # don't make a diff in the calculations and it's useful to have them for
+    # later)
+    dplyr::summarize(pred_mean = mean(.data$.pred_1, na.rm = TRUE),
+                     .groups = "drop") %>%
     dplyr::filter(.data$holdout == 0)
 
-  # getting calibrated thresholds based on the dedpul algorithm
-  thresholds <- common_seed_tibble %>%
-    dplyr::mutate(thres = purrr::map_dbl(.data$common_seed, function(x) {
-      subavg_pred <- average_assessment_per_seed %>%
-        dplyr::filter(.data$common_seed == x)
-      if (plotting == TRUE) {
-        filename <- paste0(filepath, paste0("D_alpha_common_seed_", x, ".png"))
-      }else{
-        filename <- NULL
-      }
-      threshold_res <- calibrated_threshold(data = subavg_pred, steps = steps,
-                                            plotting = plotting,
-                                            filename = filename,
-                                            threshold = threshold,
-                                            eps = eps)
-      return(threshold_res)
+  # getting a calibrated threshold based on the dedpul algorithm
 
-    }))
+  if (plotting == TRUE) {
+    filename <- paste0(filepath, paste0("D_alpha_common_seed.png"))
+  }else{
+    filename <- NULL
+  }
 
 
-  pred_class_seed <- predictions_set %>%
-    dplyr::left_join(thresholds, by = "common_seed")  %>%
+  threshold_res <- calibrated_threshold(data = avgscore_df, steps = steps,
+                                        plotting = plotting,
+                                        filename = filename,
+                                        threshold = threshold,
+                                        eps = eps)
+
+
+  # thresholds <- common_seed_tibble %>%
+  #   dplyr::mutate(thres = purrr::map_dbl(.data$common_seed, function(x) {
+  #     subavg_pred <- average_assessment_per_seed %>%
+  #       dplyr::filter(.data$common_seed == x)
+  #     if (plotting == TRUE) {
+  #       filename <- paste0(filepath, paste0("D_alpha_common_seed_", x, ".png"))
+  #     }else{
+  #       filename <- NULL
+  #     }
+  #     threshold_res <- calibrated_threshold(data = subavg_pred, steps = steps,
+  #                                           plotting = plotting,
+  #                                           filename = filename,
+  #                                           threshold = threshold,
+  #                                           eps = eps)
+  #     return(threshold_res)
+  #
+  #   }))
+
+  # classification
+  predclass_df <- avgscore_df %>%
     dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
-                                               .data$thres, function(x, y) {
-                                                  ifelse(x > y, 1, 0)})) %>%
-    dplyr::mutate(confidence = purrr::map2_dbl(.data$common_seed, .data$indID, function(x,y){
+                                               threshold_res, function(x, y) {
+                                                 ifelse(x > y, 1, 0)}))
 
-      line_classif <- which(.data$common_seed == x & .data$indID == y)
 
-      predictions <- scores_df$.pred_1[which(scores_df$indID == y & scores_df$common_seed == x)]
+  pred_conf <- predclass_df |>
+    dplyr::mutate(confidence = purrr::map_dbl(.data$indID, function(x){
+
+      line_classif <- which(.data$indID == x) # in averaged data frame
+      predictions <- scores_df$.pred_1[which(scores_df$indID == x)]
 
       if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
         conf <- 1
       }else{
-
         # beta fitting
         beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
 
         if (.data$pred_class[line_classif] == 1){
-          conf <- stats::pbeta(q = .data$thres[line_classif],
+          conf <- stats::pbeta(q = threshold_res,
                                shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
 
         }else{
-          conf <- stats::pbeta(q = .data$thres[line_classif],
+          conf <- stats::pbeta(q = threshold_res,
                                shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
         }
 
       }
 
-      return(conf)
-
     }))
+  #
 
+#
+#   pred_summary <- pred_class_seed |>
+#     dplyr::group_by(.data$indID) |>
+#     dplyr::add_count(.data$pred_class, sort = TRUE) |>
+#     dplyr::slice(1) |>
+#     dplyr::select(-c(n, .data$thres, .data$common_seed))
+#
+#
+#   avg_thres <- mean(thresholds$thres)
+#
+#   pred_conf <- pred_summary |>
+#     dplyr::mutate(confidence = purrr::map_dbl(.data$indID, function(x){
+#
+#       line_classif <- which(.data$indID == x)
+#       predictions <- scores_df$.pred_1[which(scores_df$indID == x)]
+#
+#       if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
+#         conf <- 1
+#       }else{
+#         # beta fitting
+#         beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
+#
+#         if (.data$pred_class[line_classif] == 1){
+#           conf <- stats::pbeta(q = avg_thres,
+#                                shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
+#
+#         }else{
+#           conf <- stats::pbeta(q = avg_thres,
+#                                shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
+#         }
+#
+#       }
+#
+#     }))
+  #
+#   pred_class_seed <- predictions_set %>%
+#     dplyr::left_join(thresholds, by = "common_seed")  %>%
+#     dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
+#                                                .data$thres, function(x, y) {
+#                                                   ifelse(x > y, 1, 0)})) %>%
+#     dplyr::mutate(confidence = purrr::map2_dbl(.data$common_seed, .data$indID, function(x,y){
+#
+#       line_classif <- which(.data$common_seed == x & .data$indID == y)
+#
+#       predictions <- scores_df$.pred_1[which(scores_df$indID == y)]
+#
+#       if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
+#         conf <- 1
+#       }else{
+#
+#         # beta fitting
+#         beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
+#
+#         if (.data$pred_class[line_classif] == 1){
+#           conf <- stats::pbeta(q = .data$thres[line_classif],
+#                                shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
+#
+#         }else{
+#           conf <- stats::pbeta(q = .data$thres[line_classif],
+#                                shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
+#         }
+#
+#       }
+#
+#       return(conf)
+#
+#     }))
+#
+
+  # Now we have to summarize classification
 
 
   # # There's one result per common_seed and indID for holdout == 0 and
@@ -163,7 +257,7 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
 #                            "possible_offender", "known_non_offender",
 #                            "event_ais_year", "holdout"))
 #
-  return(pred_class_seed)
+  return(pred_conf)
 
 }
 

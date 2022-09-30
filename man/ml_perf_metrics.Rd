@@ -4,7 +4,7 @@
 \alias{ml_perf_metrics}
 \title{Computes recall for assessment sets and specificity for holdout non offenders}
 \usage{
-ml_perf_metrics(data, common_seed_tibble)
+ml_perf_metrics(data, common_seed_tibble, specif = TRUE)
 }
 \arguments{
 \item{data}{tibble with at least a common_seed column, a prediction_output
@@ -15,6 +15,8 @@ vessel was identified as non offender by inspections).}
 
 \item{common_seed_tibble}{tibble with one column containing all the common
 seeds}
+
+\item{specif}{If TRUE (default), specificity is computed}
 }
 \value{
 tibble with recall and specificity per seed
