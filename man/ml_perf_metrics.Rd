@@ -4,23 +4,20 @@
 \alias{ml_perf_metrics}
 \title{Computes recall for assessment sets and specificity for holdout non offenders}
 \usage{
-ml_perf_metrics(data, common_seed_tibble)
+ml_perf_metrics(data)
 }
 \arguments{
-\item{data}{tibble with at least a common_seed column, a prediction_output
-column, a holdout column (whether if the observation was used in the model or
+\item{data}{tibble with at least a prediction_output column (pred_class),
+a holdout column (whether if the observation was used in the model or
 held out), a known_offender column (whether if the vessel was identified as
 an offender by reports), and a known_non_offender column (whether if the
 vessel was identified as non offender by inspections).}
-
-\item{common_seed_tibble}{tibble with one column containing all the common
-seeds}
 }
 \value{
 tibble with recall and specificity per seed
 }
 \description{
-For each common seed, two performance metrics are computed:
+Two performance metrics are computed:
 recall, for assessment sets (in model versions that did not use them for
 training), and specificity for holdout non offenders (in the same year of the
 certification/inspection - if done at the end of the year)

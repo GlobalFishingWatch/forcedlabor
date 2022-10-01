@@ -1,6 +1,6 @@
 #' Computes binary classification via DEDPUL
 #'
-#' @description For each common seed and vessel-year, it computes a binary
+#' @description For each vessel-year, it computes a binary
 #' classification, 0 non offender and 1 offender. It is based on the DEDPUL
 #' algorithm in the reference.
 #'
@@ -16,7 +16,7 @@
 #' @param threshold potential thresholds to test
 #' @param eps accepted difference (tolerance) between alpha and the actual
 #' proportion of positives for a given threshold
-#' @return tibble with classification and calibrated thresholds used for them
+#' @return tibble with classification and calibrated threshold used for them
 #'
 #' @references
 #'
@@ -54,116 +54,69 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
     # a tibble per cell
     tidyr::unnest(.data$prediction_output)
 
-  predictions_set  <- avg_confscore(data)
+  avgscore_df <- data %>%
+    dplyr::select(.data$prediction_output) %>%
+    tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
+    # a tibble per cell
+    tidyr::unnest(.data$prediction_output) %>% # everything is a regular tibble
+    dplyr::group_by(dplyr::across(-.data$.pred_1)) %>% # group by everything
+    # except .pred_1 (only common_seed and indID actually matter but the other
+    # don't make a diff in the calculations and it's useful to have them for
+    # later)
+    dplyr::summarize(pred_mean = mean(.data$.pred_1, na.rm = TRUE),
+                     .groups = "drop")
 
-  average_assessment_per_seed <- predictions_set %>%
+  avgscore_df_noneg <- avgscore_df %>%
     dplyr::filter(.data$holdout == 0)
 
-  # getting calibrated thresholds based on the dedpul algorithm
-  thresholds <- common_seed_tibble %>%
-    dplyr::mutate(thres = purrr::map_dbl(.data$common_seed, function(x) {
-      subavg_pred <- average_assessment_per_seed %>%
-        dplyr::filter(.data$common_seed == x)
-      if (plotting == TRUE) {
-        filename <- paste0(filepath, paste0("D_alpha_common_seed_", x, ".png"))
-      }else{
-        filename <- NULL
-      }
-      threshold_res <- calibrated_threshold(data = subavg_pred, steps = steps,
-                                            plotting = plotting,
-                                            filename = filename,
-                                            threshold = threshold,
-                                            eps = eps)
-      return(threshold_res)
+  # getting a calibrated threshold based on the dedpul algorithm
 
-    }))
+  if (plotting == TRUE) {
+    filename <- paste0(filepath, paste0("D_alpha_common_seed.png"))
+  }else{
+    filename <- NULL
+  }
 
 
-  pred_class_seed <- predictions_set %>%
-    dplyr::left_join(thresholds, by = "common_seed")  %>%
+  threshold_res <- calibrated_threshold(data = avgscore_df_noneg, steps = steps,
+                                        plotting = plotting,
+                                        filename = filename,
+                                        threshold = threshold,
+                                        eps = eps)
+
+  # classification
+  predclass_df <- avgscore_df %>%
     dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
-                                               .data$thres, function(x, y) {
-                                                  ifelse(x > y, 1, 0)})) %>%
-    dplyr::mutate(confidence = purrr::map2_dbl(.data$common_seed, .data$indID, function(x,y){
+                                               threshold_res, function(x, y) {
+                                                 ifelse(x > y, 1, 0)}))
 
-      line_classif <- which(.data$common_seed == x & .data$indID == y)
 
-      predictions <- scores_df$.pred_1[which(scores_df$indID == y & scores_df$common_seed == x)]
+  pred_conf <- predclass_df |>
+    dplyr::mutate(confidence = purrr::map_dbl(.data$indID, function(x){
+
+      line_classif <- which(.data$indID == x) # in averaged data frame
+      predictions <- scores_df$.pred_1[which(scores_df$indID == x)]
 
       if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
         conf <- 1
       }else{
-
         # beta fitting
         beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
 
         if (.data$pred_class[line_classif] == 1){
-          conf <- stats::pbeta(q = .data$thres[line_classif],
+          conf <- stats::pbeta(q = threshold_res,
                                shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = FALSE)
 
         }else{
-          conf <- stats::pbeta(q = .data$thres[line_classif],
+          conf <- stats::pbeta(q = threshold_res,
                                shape1 = beta_par[1], shape2 = beta_par[2], lower.tail = TRUE)
         }
 
       }
 
-      return(conf)
-
     }))
 
-
-
-  # # There's one result per common_seed and indID for holdout == 0 and
-  # # two results (one per fold) per common_seed and indID
-  #
-  # # Trying to do this quicker:
-  # # 1. The score ID will be first equal to RF + the seed + A
-  # # 2. For holdouts, one will be B instead of A
-  # # 3. Replace for prettier stuff
-  #
-  # toto %>%
-  #   dplyr::mutate(scoreID = paste0("RF-",common_seed, "-A")) %>%
-  #   dplyr::mutate(score2 = paste0(scoreID, "-", indID)) -> toto
-  #
-  # toto2 <- toto[1:60000,]
-  # toto2 %>%
-  #   dplyr::mutate(test =
-  #                   purrr::map(score2, function(x){
-  #                     titi <- toto2 %>%
-  #                       dplyr::filter(score2 == x)
-  #                     if (nrow(titi) > 1){
-  #                       titi %>%
-  #                         dplyr::mutate(score3 = 1:nrow(titi))
-  #                     }
-  #                   })) -> new_test
-  #
-  #
-  # sum(duplicated(toto$score2) == TRUE)
-  #
-  # toto %>%
-  #   dplyr::filter(holdout == 1)
-
-
-#     dplyr::mutate(test =
-#     purrr::map2_dbl(.x = .data$common_seed, .y = indID, .f = function(x,y){
-#       toto %>%
-#         dplyr::filter(common_seed == x & indID == y) -> titi
-# return(nrow(titi))
-#     }))
-
-#
-#   toto %>%
-#     # colnames()
-#     tidyr::pivot_wider(id_expand = .pred_1)
-#
-#
-#   titi <- pred_class_seed %>%
-#     dplyr::left_join(toto, by = c("common_seed", "indID", "known_offender",
-#                            "possible_offender", "known_non_offender",
-#                            "event_ais_year", "holdout"))
-#
-  return(pred_class_seed)
+  return(pred_conf)
 
 }
 
@@ -245,6 +198,8 @@ calibrated_threshold <- function(data, steps = 1000, plotting = FALSE,
 
   # estimating alpha
   alpha <- dedpul_estimation(data, steps, plotting, filename)
+
+  print(paste("alpha: ", alpha))
 
   # keep only the unlabeled
   data <- data %>%
@@ -349,10 +304,10 @@ kernel_unlabeled <- function(data) {
   # density kernels and interpolation to the unlabeled values
   den_pos <- KernSmooth::bkde(pred_pos$pred_mean)
   den_pos_u <- stats::approx(den_pos$x, den_pos$y,
-                             xout = sort(pred_unl$pred_mean))
+                             xout = sort(pred_unl$pred_mean), rule = 2)
   den_unl <- KernSmooth::bkde(pred_unl$pred_mean)
   den_unl_u <- stats::approx(den_unl$x, den_unl$y,
-                             xout = sort(pred_unl$pred_mean))
+                             xout = sort(pred_unl$pred_mean), rule = 2)
 
   return(list(f_yp = den_pos_u$y, f_yu = den_unl_u$y, y_u = y_u))
 

@@ -192,7 +192,7 @@ ml_hyperpar <- function(train_pred_proba) {
 #' @param best_hyperparameters hyperparameters values that gave max auc for each
 #' common seed
 #' @param prediction_df hold-out data frame with possible offenders and non
-#' offenders to predict on
+#' offenders to predict on. If NULL, then only predict on the training set
 #' @return an object with predicted values and fitted models
 #'
 #' @importFrom furrr future_map
@@ -244,72 +244,131 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
   # here we train and predict probabilities of being an offender during
   # cross-validation
 
-  results <-
-    bag_runs %>%
-  dplyr::mutate(
-    prediction_output = furrr::future_map(.x = .data$counter, .f = function(x) {
-      fl_rec_down <- fl_rec %>%
-        themis::step_downsample(known_offender,
-                                under_ratio = down_sample_ratio,
-                                seed = bag_runs$recipe_seed[x],
-                                skip = TRUE)
+  if (is.null(prediction_df) == FALSE){
 
-      # Ensure all bags look the same
-      set.seed(bag_runs$common_seed[x])
-      # get the 10 folds related to that common seed
-      cv_splits <- cv_splits_all %>%
-        dplyr::filter(.data$common_seed == bag_runs$common_seed[x]) %>%
-        .$cv_splits %>%
-        purrr::pluck(1)
+    results <-
+      bag_runs %>%
+      dplyr::mutate(
+        prediction_output = furrr::future_map(.x = .data$counter, .f = function(x) {
+          fl_rec_down <- fl_rec %>%
+            themis::step_downsample(known_offender,
+                                    under_ratio = down_sample_ratio,
+                                    seed = bag_runs$recipe_seed[x],
+                                    skip = TRUE)
 
-      # extract analysis and assessment sets for those folds
-      analysis_data <- cv_splits %>%
-        dplyr::mutate(# Create analysis dataset based on CV folds
-          analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
-          # Create assessment dataset based on CV folds
-          assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) %>%
-        dplyr::select(-.data$splits)
+          # Ensure all bags look the same
+          set.seed(bag_runs$common_seed[x])
+          # get the 10 folds related to that common seed
+          cv_splits <- cv_splits_all %>%
+            dplyr::filter(.data$common_seed == bag_runs$common_seed[x]) %>%
+            .$cv_splits %>%
+            purrr::pluck(1)
 
-      # extract the optimal hyperpar values for that common seed
-      best_hyperparameters_temp <- best_hyperparameters$best_hyperparameters %>%
-        dplyr::filter(.data$common_seed == bag_runs$common_seed[x])
+          # extract analysis and assessment sets for those folds
+          analysis_data <- cv_splits %>%
+            dplyr::mutate(# Create analysis dataset based on CV folds
+              analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
+              # Create assessment dataset based on CV folds
+              assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) %>%
+            dplyr::select(-.data$splits)
 
-      # workflow
-      flow <- workflows::workflow() %>%
-        workflows::add_model(rf_spec) %>%
-        workflows::add_recipe(fl_rec_down) %>%
-        # Use optimized hyperparameters found during CV
-        tune::finalize_workflow(best_hyperparameters_temp)
+          # extract the optimal hyperpar values for that common seed
+          best_hyperparameters_temp <- best_hyperparameters$best_hyperparameters %>%
+            dplyr::filter(.data$common_seed == bag_runs$common_seed[x])
 
-
-      predictions <- purrr::map(1:dim(analysis_data)[1], function(alpha) {
-        model <- parsnip::fit(flow, analysis_data$analysis[[alpha]])
-        results_internal <- stats::predict(object = model,
-                                  new_data = analysis_data$assessment[[alpha]],
-                                  type = "prob") %>%
-          dplyr::select(.data$.pred_1) %>%
-          dplyr::bind_cols(analysis_data$assessment[[alpha]][c("indID",
-                                                        "known_offender",
-                                                        "possible_offender",
-                                                        "known_non_offender",
-                                                        "event_ais_year")]) %>%
-          dplyr::mutate(holdout = 0)
-        results_fold <- stats::predict(object = model, new_data = prediction_df,
-                                type = "prob") %>%
-          dplyr::select(.data$.pred_1) %>%
-          dplyr::bind_cols(prediction_df[c("indID", "known_offender",
-                                    "possible_offender", "known_non_offender",
-                                    "event_ais_year")]) %>%
-          dplyr::mutate(holdout = 1) %>%
-          dplyr::bind_rows(results_internal)
+          # workflow
+          flow <- workflows::workflow() %>%
+            workflows::add_model(rf_spec) %>%
+            workflows::add_recipe(fl_rec_down) %>%
+            # Use optimized hyperparameters found during CV
+            tune::finalize_workflow(best_hyperparameters_temp)
 
 
-        return(results_fold)
+          predictions <- purrr::map(1:dim(analysis_data)[1], function(alpha) {
+            model <- parsnip::fit(flow, analysis_data$analysis[[alpha]])
+            results_internal <- stats::predict(object = model,
+                                               new_data = analysis_data$assessment[[alpha]],
+                                               type = "prob") %>%
+              dplyr::select(.data$.pred_1) %>%
+              dplyr::bind_cols(analysis_data$assessment[[alpha]][c("indID",
+                                                                   "known_offender", "known_non_offender")]) %>%
+              dplyr::mutate(holdout = 0)
+            results_fold <- stats::predict(object = model, new_data = prediction_df,
+                                           type = "prob") %>%
+              dplyr::select(.data$.pred_1) %>%
+              dplyr::bind_cols(prediction_df[c("indID", "known_offender", "known_non_offender")]) %>%
+              dplyr::mutate(holdout = 1) %>%
+              dplyr::bind_rows(results_internal)
 
-      })
 
-      return(predictions)
-    }))
+            return(results_fold)
+
+          })
+
+          return(predictions)
+        }))
+
+
+  }else{
+
+    results <-
+      bag_runs %>%
+      dplyr::mutate(
+        prediction_output = furrr::future_map(.x = .data$counter, .f = function(x) {
+          fl_rec_down <- fl_rec %>%
+            themis::step_downsample(known_offender,
+                                    under_ratio = down_sample_ratio,
+                                    seed = bag_runs$recipe_seed[x],
+                                    skip = TRUE)
+
+          # Ensure all bags look the same
+          set.seed(bag_runs$common_seed[x])
+          # get the 10 folds related to that common seed
+          cv_splits <- cv_splits_all %>%
+            dplyr::filter(.data$common_seed == bag_runs$common_seed[x]) %>%
+            .$cv_splits %>%
+            purrr::pluck(1)
+
+          # extract analysis and assessment sets for those folds
+          analysis_data <- cv_splits %>%
+            dplyr::mutate(# Create analysis dataset based on CV folds
+              analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
+              # Create assessment dataset based on CV folds
+              assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) %>%
+            dplyr::select(-.data$splits)
+
+          # extract the optimal hyperpar values for that common seed
+          best_hyperparameters_temp <- best_hyperparameters$best_hyperparameters %>%
+            dplyr::filter(.data$common_seed == bag_runs$common_seed[x])
+
+          # workflow
+          flow <- workflows::workflow() %>%
+            workflows::add_model(rf_spec) %>%
+            workflows::add_recipe(fl_rec_down) %>%
+            # Use optimized hyperparameters found during CV
+            tune::finalize_workflow(best_hyperparameters_temp)
+
+
+          predictions <- purrr::map(1:dim(analysis_data)[1], function(alpha) {
+            model <- parsnip::fit(flow, analysis_data$analysis[[alpha]])
+            results_fold <- stats::predict(object = model,
+                                           new_data = analysis_data$assessment[[alpha]],
+                                           type = "prob") %>%
+              dplyr::select(.data$.pred_1) %>%
+              dplyr::bind_cols(analysis_data$assessment[[alpha]][c("indID",
+                                                                   "known_offender")]) %>%
+              dplyr::mutate(holdout = 0)
+
+            return(results_fold)
+
+          })
+
+          return(predictions)
+        }))
+
+
+
+  }
 
 
   if (parallel_plan == "psock") {
