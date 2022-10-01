@@ -41,7 +41,7 @@
 #' @importFrom workflows add_recipe
 #' @importFrom yardstick metric_set
 #' @importFrom yardstick roc_auc
-#' @import recipes
+#' @rawNamespace import(recipes, except = step_downsample)
 #' @import tidyselect
 #'
 #' @export
@@ -74,7 +74,7 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
       # get a recipe with downsampling for each bag and corresponding seed
       fl_recipe = purrr::map(.data$recipe_seed, function(x) {
         fl_rec_down <- fl_rec %>%
-          themis::step_downsample(.data$known_offender,
+          themis::step_downsample(known_offender,
                                   under_ratio = down_sample_ratio, seed = x,
                                   skip = TRUE) #%>%
       })
@@ -233,7 +233,7 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
     # the garbage collector will run automatically (and asynchronously) on the
     # workers to minimize the memory footprint of the worker.
   }else if (parallel_plan == "psock") {
-    cl <- parallelly::makeClusterPSOCK(parallely::availableCores() - free_cores)
+    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
     future::plan(future::cluster, workers = cl)
   }else {
     utils::globalVariables("multisession")
@@ -249,7 +249,7 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
   dplyr::mutate(
     prediction_output = furrr::future_map(.x = .data$counter, .f = function(x) {
       fl_rec_down <- fl_rec %>%
-        themis::step_downsample(.data$known_offender,
+        themis::step_downsample(known_offender,
                                 under_ratio = down_sample_ratio,
                                 seed = bag_runs$recipe_seed[x],
                                 skip = TRUE)

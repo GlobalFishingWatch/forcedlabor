@@ -12,7 +12,7 @@
 
 gear_correction <- function(data) {
 
-  data %>%
+  data <- data %>%
     # manually correct some gears
     dplyr::mutate(gear = dplyr::if_else(.data$gear == "fishing" &
                             .data$ssvid %in% c("412440381", "412440436",
@@ -35,6 +35,8 @@ gear_correction <- function(data) {
                                                "412440499",
                                          "412440761"),
                           "squid_jiggers", .data$gear))
+
+  return(data)
 
 }
 
