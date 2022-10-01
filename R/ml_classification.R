@@ -1,6 +1,6 @@
 #' Computes binary classification via DEDPUL
 #'
-#' @description For each common seed and vessel-year, it computes a binary
+#' @description For each vessel-year, it computes a binary
 #' classification, 0 non offender and 1 offender. It is based on the DEDPUL
 #' algorithm in the reference.
 #'
@@ -16,7 +16,7 @@
 #' @param threshold potential thresholds to test
 #' @param eps accepted difference (tolerance) between alpha and the actual
 #' proportion of positives for a given threshold
-#' @return tibble with classification and calibrated thresholds used for them
+#' @return tibble with classification and calibrated threshold used for them
 #'
 #' @references
 #'
@@ -66,7 +66,9 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
     # don't make a diff in the calculations and it's useful to have them for
     # later)
     dplyr::summarize(pred_mean = mean(.data$.pred_1, na.rm = TRUE),
-                     .groups = "drop") %>%
+                     .groups = "drop")
+
+  avgscore_df_noneg <- avgscore_df %>%
     dplyr::filter(.data$holdout == 0)
 
   # getting a calibrated threshold based on the dedpul algorithm
@@ -78,7 +80,7 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
   }
 
 
-  threshold_res <- calibrated_threshold(data = avgscore_df, steps = steps,
+  threshold_res <- calibrated_threshold(data = avgscore_df_noneg, steps = steps,
                                         plotting = plotting,
                                         filename = filename,
                                         threshold = threshold,

@@ -35,10 +35,10 @@ needed}
 proportion of positives for a given threshold}
 }
 \value{
-tibble with classification and calibrated thresholds used for them
+tibble with classification and calibrated threshold used for them
 }
 \description{
-For each common seed and vessel-year, it computes a binary
+For each vessel-year, it computes a binary
 classification, 0 non offender and 1 offender. It is based on the DEDPUL
 algorithm in the reference.
 }
