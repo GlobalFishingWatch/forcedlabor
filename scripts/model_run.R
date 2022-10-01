@@ -1,3 +1,6 @@
+######### DEPRECATED SCRIPT - SHOULD BE REMOVED BEFORE MAKING PUBLIC #######
+
+
 ### installing and loading package ###
 
 if (!require("forcedlabor")) {
