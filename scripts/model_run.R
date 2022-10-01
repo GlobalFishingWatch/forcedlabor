@@ -349,25 +349,26 @@ perf_metrics <- ml_perf_metrics(data = classif_res,
 # 4         404       0.92      0.962
 # 5         505       0.933     0.962
 
+recall_res <-  ml_recall(data = classif_res)
 
 
 
 ##### Prediction summary: Classification between seeds #####
 # This is info we can give to external collaborators
 
-pred_class_stats <- ml_pred_summary(data = classif_res,
-                                    num_common_seeds = num_common_seeds)
+# pred_class_stats <- ml_pred_summary(data = classif_res,
+#                                     num_common_seeds = num_common_seeds)
 # pred_class_stats_composite <- pred_class_stats
-bigrquery::bq_table(project = "world-fishing-827",
-                    table = "pred_class_stats_after_conf",
-                    dataset = "scratch_rocio") %>%
-  bigrquery::bq_table_upload(values = pred_class_stats,
-                             fields = bigrquery::as_bq_fields(pred_class_stats),
-                             write_disposition = "WRITE_TRUNCATE")
+# bigrquery::bq_table(project = "world-fishing-827",
+#                     table = "pred_class_stats_after_conf",
+#                     dataset = "scratch_rocio") %>%
+#   bigrquery::bq_table_upload(values = pred_class_stats,
+#                              fields = bigrquery::as_bq_fields(pred_class_stats),
+#                              write_disposition = "WRITE_TRUNCATE")
 
 bigrquery::bq_table(project = "world-fishing-827",
                     table = "classif_res_after_conf",
-                    dataset = "scratch_rocio") %>%
+                    dataset = "scratch_rocio") |>
   bigrquery::bq_table_upload(values = classif_res,
                              fields = bigrquery::as_bq_fields(classif_res),
                              write_disposition = "WRITE_TRUNCATE")

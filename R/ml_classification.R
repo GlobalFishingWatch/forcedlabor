@@ -340,7 +340,7 @@ calibrated_threshold <- function(data, steps = 1000, plotting = FALSE,
   # estimating alpha
   alpha <- dedpul_estimation(data, steps, plotting, filename)
 
-  print(alpha)
+  print(paste("alpha: ", alpha))
 
   # keep only the unlabeled
   data <- data %>%

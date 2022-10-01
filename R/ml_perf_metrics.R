@@ -64,6 +64,40 @@ ml_perf_metrics <- function(data, common_seed_tibble, specif = TRUE) {
 }
 
 
+
+#' Computes recall for assessment sets
+#'
+#' @description Computes recall, for assessment sets (in model versions that
+#' did not use them for training)
+#'
+#' @param data tibble with at least a prediction_output
+#' column and a known_offender column (whether if the vessel was identified as
+#' an offender by reports).
+#' @return recall value
+#'
+#' @importFrom purrr map_dbl
+#' @importFrom purrr pluck
+#' @importFrom yardstick recall
+#' @import dplyr
+#'
+#' @export
+#'
+
+ml_recall <- function(data) {
+
+  perf_metrics <- data |>
+    yardstick::recall(truth = factor(.data$known_offender,
+                                     levels = c(1, 0)),
+                      estimate = factor(.data$pred_class,
+                                        levels = c(1, 0))) |>
+    dplyr::select(.data$.estimate) |>
+    purrr::pluck(1)
+
+  return(perf_metrics)
+}
+
+
+
 ml_perf_metrics_composite <- function(data) {
 
    recall_stat <-  data %>%
