@@ -14,7 +14,6 @@ Imports:
     magrittr,
     dplyr,
     EnvStats,
-    forcats,
     furrr,
     future,
     ggplot2,
