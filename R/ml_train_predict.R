@@ -61,7 +61,6 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
     future::plan(future::cluster, workers = cl)
   }else {
-    utils::globalVariables("multisession")
     future::plan(future::multisession,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }
@@ -236,7 +235,6 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
     cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
     future::plan(future::cluster, workers = cl)
   }else {
-    utils::globalVariables("multisession")
     future::plan(future::multisession,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }

@@ -173,7 +173,11 @@ bag_runs <- common_seed_tibble %>%
 parallel_plan <- "multicore" # multisession if running from RStudio, or
 # multicore if from Linux, Mac and plain R, or
 # psock if multisession is not working well and you need to try something else
+if (parallel_plan == "multisession"){
+  utils::globalVariables("multisession")
+}
 free_cores <- 1 # add more if you need to do many things at the same time
+
 
 
 ## CROSS VALIDATION ##
