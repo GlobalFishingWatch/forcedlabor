@@ -271,7 +271,7 @@ ml_hyperpar <- function(train_pred_proba) {
 
   roc_auc_results <- train_pred_proba %>%
     dplyr::group_by(dplyr::across(-c(.data$.pred_1, .data$bag,
-                                     .data$known_offender, .data$.row))) %>%
+                                     .data$known_offender, .data$.row, .data$counter))) %>%
     yardstick::roc_auc(truth = .data$known_offender,
             .data$.pred_1) %>%
     dplyr::ungroup() %>% # getting auc per hyperparameter combination
