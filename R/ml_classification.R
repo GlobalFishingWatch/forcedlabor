@@ -48,11 +48,11 @@ ml_classification <- function(data, common_seed_tibble, steps = 1000,
   }
 
   # unnesting the tibble inside the tibble
-  scores_df <- data %>%
-    dplyr::select(.data$common_seed, .data$prediction_output) %>%
-    tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
-    # a tibble per cell
-    tidyr::unnest(.data$prediction_output)
+  scores_df <- data |>
+    dplyr::select(.data$common_seed, .data$predictions) |>
+    tidyr::unnest(.data$predictions) # |>  # from having a list per cell to
+    # # a tibble per cell
+    # tidyr::unnest(.data$predictions)
 
   avgscore_df <- data %>%
     dplyr::select(.data$prediction_output) %>%
