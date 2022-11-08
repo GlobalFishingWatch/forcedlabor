@@ -350,8 +350,6 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                 best_hyperparameters, prediction_df) {
 
   # Setting up the parallelization
-
-  # Setting up the parallelization
   if (parallel_plan == "multicore") {
     future::plan(future::multicore,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
