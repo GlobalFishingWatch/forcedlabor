@@ -137,7 +137,7 @@ ml_classification <- function(data, steps = 1000,
 
       }
 
-    }))
+    }, .options = furrr::furrr_options(seed = TRUE)))
 
   return(list(pred_conf = pred_conf, alpha = threshold_res$alpha))
 

@@ -486,7 +486,7 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
           })
 
           return(predictions)
-        }))
+        }, .options = furrr::furrr_options(seed = TRUE)))
 
 
 
@@ -651,7 +651,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              tidyr::unnest(.data$predictions)
 
                                            return(cv_predictions)
-                                         }))
+                                         }, .options = furrr::furrr_options(seed = TRUE)))
 
 
   }else{
@@ -717,7 +717,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              tidyr::unnest(.data$predictions)
 
                                            return(cv_predictions)
-                                         }))
+                                         }, .options = furrr::furrr_options(seed = TRUE)))
 
 
   }
