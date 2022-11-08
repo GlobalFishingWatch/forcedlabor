@@ -69,15 +69,15 @@ ml_classification <- function(data, steps = 1000,
   }
 
   # unnesting the tibble inside the tibble
-  scores_df <- data |>
-    dplyr::select(.data$common_seed, .data$predictions) |>
-    tidyr::unnest(.data$predictions) # |>  # from having a list per cell to
+  # scores_df <- data |>
+    # dplyr::select(.data$common_seed, .data$predictions) |>
+    # tidyr::unnest(.data$predictions) # |>  # from having a list per cell to
     # # a tibble per cell
     # tidyr::unnest(.data$predictions)
 
   avgscore_df <- data |>
-    dplyr::select(.data$predictions) |>
-    tidyr::unnest(.data$predictions) |>  # from having a list per cell to
+    # dplyr::select(.data$predictions) |>
+    # tidyr::unnest(.data$predictions) |>  # from having a list per cell to
     # a tibble per cell
     # tidyr::unnest(.data$prediction_output) %>% # everything is a regular tibble
     dplyr::group_by(dplyr::across(c(.data$indID, .data$holdout,
@@ -118,7 +118,7 @@ ml_classification <- function(data, steps = 1000,
     dplyr::mutate(confidence = furrr::future_map_dbl(.data$indID, function(x){
 
       line_classif <- which(.data$indID == x) # in averaged data frame
-      predictions <- scores_df$.pred_1[which(scores_df$indID == x)]
+      predictions <- data$.pred_1[which(data$indID == x)]
 
       if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))){
         conf <- 1
