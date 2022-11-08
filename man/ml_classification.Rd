@@ -6,21 +6,19 @@
 \usage{
 ml_classification(
   data,
-  common_seed_tibble,
   steps = 1000,
   plotting = FALSE,
   filepath = NULL,
   threshold = seq(0, 0.99, by = 0.01),
-  eps = 0.01
+  eps = 0.01,
+  parallel_plan = "multicore",
+  free_cores = 1
 )
 }
 \arguments{
 \item{data}{tibble with at least a common_seed column and a prediction_output
 column The prediction_output column is a list. Each element contains a
 tibble with predictions and covariates.}
-
-\item{common_seed_tibble}{tibble with one column containing all the common
-seeds}
 
 \item{steps}{number of locations at which to compute D}
 
@@ -33,6 +31,11 @@ needed}
 
 \item{eps}{accepted difference (tolerance) between alpha and the actual
 proportion of positives for a given threshold}
+
+\item{parallel_plan}{type of parallelization to run (multicore, multisession,
+or psock - this last one may need calling libraries inside)}
+
+\item{free_cores}{number of free cores to leave out of parallelization}
 }
 \value{
 tibble with classification and calibrated threshold used for them

@@ -545,8 +545,6 @@ ml_frankenstraining <- function(training_df, fl_rec, rf_spec, cv_splits_all,
 #' @importFrom tidyr unnest
 #' @importFrom workflows add_model
 #' @importFrom workflows add_recipe
-#' @importFrom workflows fit.workflow
-#' @importFrom workflows predict.workflow
 #' @importFrom workflows workflow
 #' @import dplyr
 #'
