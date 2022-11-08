@@ -15,7 +15,7 @@
 #' @param down_sample_ratio down sampling ratio for the smaller class
 #' (offenders); to add to the recipe in each bag
 #' @param num_grid number of grid random values for combinations of
-#' hyperparameters per bag
+#' hyperparameters per bag, or grid of values to test
 #' @param parallel_plan type of parallelization to run (multicore, multisession
 #' or psock - this last one may need calling libraries inside)
 #' @param free_cores number of free cores to leave out of parallelization
@@ -651,7 +651,11 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              tidyr::unnest(.data$predictions)
 
                                            return(cv_predictions)
-                                         }, .options = furrr::furrr_options(seed = TRUE)))
+                                         }, .options = furrr::furrr_options(seed = TRUE))) |>
+
+      # Remove unnecessary columns
+      dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
+      tidyr::unnest(.data$predictions)
 
 
   }else{
