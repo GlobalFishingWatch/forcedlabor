@@ -33,7 +33,7 @@ the actual seed using to downsample in each bag}
 (offenders); to add to the recipe in each bag}
 
 \item{num_grid}{number of grid random values for combinations of
-hyperparameters per bag}
+hyperparameters per bag, or grid of values to test}
 
 \item{parallel_plan}{type of parallelization to run (multicore, multisession
 or psock - this last one may need calling libraries inside)}
