@@ -188,8 +188,6 @@ ml_hyperpar <- function(train_pred_proba) {
 #' @param parallel_plan type of parallelization to run (multicore, multisession,
 #' or psock - this last one may need calling libraries inside)
 #' @param free_cores number of free cores to leave out of parallelization
-#' @param best_hyperparameters hyperparameters values that gave max auc for each
-#' common seed
 #' @param prediction_df hold-out data frame with possible offenders and non
 #' offenders to predict on. If NULL (default), then only predict on the training set
 #' @return an object with predicted values and fitted models

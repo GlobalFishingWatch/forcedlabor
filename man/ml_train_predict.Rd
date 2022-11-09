@@ -38,9 +38,6 @@ or psock - this last one may need calling libraries inside)}
 
 \item{prediction_df}{hold-out data frame with possible offenders and non
 offenders to predict on. If NULL (default), then only predict on the training set}
-
-\item{best_hyperparameters}{hyperparameters values that gave max auc for each
-common seed}
 }
 \value{
 an object with predicted values and fitted models

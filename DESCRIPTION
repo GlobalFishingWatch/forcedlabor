@@ -20,7 +20,6 @@ Imports:
     KernSmooth,
     parallel,
     parallelly,
-    parsnip,
     purrr,
     recipes,
     rsample,
