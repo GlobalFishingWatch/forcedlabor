@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.2.1",
+    "Version": "4.2.2",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -483,13 +483,6 @@
       "RemoteSha": "37acbb7063a60861237909515b476a4a272ec1f5",
       "Hash": "5cbf3a48bd85c69f9d8c70e1bf7f3529"
     },
-    "forcats": {
-      "Package": "forcats",
-      "Version": "0.5.2",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "9d95bc88206321cd1bc98480ecfd74bb"
-    },
     "foreach": {
       "Package": "foreach",
       "Version": "1.5.2",
@@ -947,10 +940,10 @@
     },
     "nnet": {
       "Package": "nnet",
-      "Version": "7.3-17",
+      "Version": "7.3-18",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "cb1d8d9f300a7e536b89c8a88c53f610"
+      "Hash": "170da2130d5332bea7d6ede01875ba1d"
     },
     "nortest": {
       "Package": "nortest",
@@ -1269,10 +1262,10 @@
     },
     "rpart": {
       "Package": "rpart",
-      "Version": "4.1.16",
+      "Version": "4.1.19",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "ea3ca1d9473daabb3cd0f1b4f974c1ed"
+      "Hash": "b3c892a81783376cc2204af0f5805a80"
     },
     "rprojroot": {
       "Package": "rprojroot",
