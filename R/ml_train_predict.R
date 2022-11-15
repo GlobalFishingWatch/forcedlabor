@@ -342,8 +342,8 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                       furrr::future_map2(.data$fl_recipe,
                                          .data$common_seed,
                                          function(x, y) {
-                                           # Ensure all bags look the same
-                                           set.seed(y)
+                                           # # Ensure all bags look the same
+                                           # set.seed(y)
                                            # specifying the workflow with the model, recipe for data and how the
                                            # tuning goes
                                            cv_predictions_workflow <-
