@@ -58,7 +58,7 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
     # the garbage collector will run automatically (and asynchronously) on the
     # workers to minimize the memory footprint of the worker.
   }else if (parallel_plan == "psock") {
-   cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
+    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
     future::plan(future::cluster, workers = cl)
   }else {
     future::plan(future::multisession,
@@ -83,33 +83,33 @@ ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
     dplyr::mutate(predictions = furrr::future_map2(.data$fl_recipe,
                                                    .data$common_seed,
                                                    function(x, y) {
-      # Ensure all bags look the same across hyperparameter tuning grid
-      set.seed(y)
-      cv_splits <- cv_splits_all %>%
-        dplyr::filter(.data$common_seed == y) %>%
-        .$cv_splits %>%
-        purrr::pluck(1) # unlist first (unique) element
+                                                     # Ensure all bags look the same across hyperparameter tuning grid
+                                                     set.seed(y)
+                                                     cv_splits <- cv_splits_all %>%
+                                                       dplyr::filter(.data$common_seed == y) %>%
+                                                       .$cv_splits %>%
+                                                       purrr::pluck(1) # unlist first (unique) element
 
-      # specifying the workflow with the model, recipe for data and how the
-      # tuning goes
-      cv_predictions <- workflows::workflow() %>%
-        workflows::add_model(rf_spec) %>%
-        workflows::add_recipe(x) %>%
-        tune::tune_grid(resamples = cv_splits,
-                  # Automatically creates hyperparameter grid
-                  # using a space-filling design (via a Latin hypercube)
-                  grid = num_grid,
-                  # Need to specify a metric to calculate, even though we
-                  # won't use it for anything
-                  # Doing ROC means that the predictions this outputs will be
-                  # the raw numeric, rather than class
-                  metrics = yardstick::metric_set(yardstick::roc_auc),
-                  control = tune::control_resamples(save_pred = TRUE)) %>%
-        dplyr::select(id, .data$.predictions) %>%
-        tidyr::unnest(.data$.predictions) %>%
-        dplyr::select(-.data$.pred_0, -.data$.config)
-      return(cv_predictions)
-    }, .options = furrr::furrr_options(seed = TRUE))) %>%
+                                                     # specifying the workflow with the model, recipe for data and how the
+                                                     # tuning goes
+                                                     cv_predictions <- workflows::workflow() %>%
+                                                       workflows::add_model(rf_spec) %>%
+                                                       workflows::add_recipe(x) %>%
+                                                       tune::tune_grid(resamples = cv_splits,
+                                                                       # Automatically creates hyperparameter grid
+                                                                       # using a space-filling design (via a Latin hypercube)
+                                                                       grid = num_grid,
+                                                                       # Need to specify a metric to calculate, even though we
+                                                                       # won't use it for anything
+                                                                       # Doing ROC means that the predictions this outputs will be
+                                                                       # the raw numeric, rather than class
+                                                                       metrics = yardstick::metric_set(yardstick::roc_auc),
+                                                                       control = tune::control_resamples(save_pred = TRUE)) %>%
+                                                       dplyr::select(id, .data$.predictions) %>%
+                                                       tidyr::unnest(.data$.predictions) %>%
+                                                       dplyr::select(-.data$.pred_0, -.data$.config)
+                                                     return(cv_predictions)
+                                                   }, .options = furrr::furrr_options(seed = TRUE))) %>%
     # Remove unnecessary columns
     dplyr::select(-.data$recipe_seed, -.data$fl_recipe) %>%
     tidyr::unnest(.data$predictions)
@@ -145,7 +145,7 @@ ml_hyperpar <- function(train_pred_proba) {
     dplyr::group_by(dplyr::across(-c(.data$.pred_1, .data$bag,
                                      .data$known_offender, .data$.row, .data$counter))) %>%
     yardstick::roc_auc(truth = .data$known_offender,
-            .data$.pred_1) %>%
+                       .data$.pred_1) %>%
     dplyr::ungroup() %>% # getting auc per hyperparameter combination
     # auc because it's not corrupted by the conditions of our data
     # now we need to get stats across folds per hyperparameter combination
@@ -153,7 +153,7 @@ ml_hyperpar <- function(train_pred_proba) {
     # Get mean, min of performance across folds for each hyperparameter
     # Will get NA if fold contains NAs or NaNs
     dplyr::summarize(mean_performance = mean(.data$.estimate),
-              min_performance = min(.data$.estimate)) %>%
+                     min_performance = min(.data$.estimate)) %>%
     dplyr::ungroup()
 
   # now we need to find the best hyperparameters using the best mean auc per
@@ -219,10 +219,13 @@ ml_hyperpar <- function(train_pred_proba) {
 
 # Trains machine learning (RF with fixed hyperparameters) models and predicts
 
+
+# Trains machine learning (RF with fixed hyperparameters) models and predicts
+
 ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
-                                bag_runs, down_sample_ratio,
-                                parallel_plan = "multicore", free_cores = 1,
-                                prediction_df = NULL) {
+                             bag_runs, down_sample_ratio,
+                             parallel_plan = "multicore", free_cores = 1,
+                             prediction_df = NULL) {
 
   # Setting up the parallelization
   if (parallel_plan == "multicore") {
@@ -316,7 +319,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              tidyr::unnest(.data$predictions)
 
                                            return(cv_predictions)
-                                         }, .options = furrr::furrr_options(seed = TRUE, future.globals.maxSize = 1572864000))) |>
+                                         }, .options = furrr::furrr_options(seed = y))) |>
 
       # Remove unnecessary columns
       dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
@@ -342,8 +345,8 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                       furrr::future_map2(.data$fl_recipe,
                                          .data$common_seed,
                                          function(x, y) {
-                                           # # Ensure all bags look the same
-                                           # set.seed(y)
+                                           # Ensure all bags look the same
+                                           set.seed(y)
                                            # specifying the workflow with the model, recipe for data and how the
                                            # tuning goes
                                            cv_predictions_workflow <-
@@ -386,8 +389,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              tidyr::unnest(.data$predictions)
 
                                            return(cv_predictions)
-                                         }, .options = furrr::furrr_options(seed = TRUE,
-                                                                            future.globals.maxSize = 1572864000))) |>
+                                         }, .options = furrr::furrr_options(seed = y))) |>
 
       # Remove unnecessary columns
       dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
