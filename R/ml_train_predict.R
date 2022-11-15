@@ -319,7 +319,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              tidyr::unnest(.data$predictions)
 
                                            return(cv_predictions)
-                                         }, .options = furrr::furrr_options(seed = y))) |>
+                                         }, .options = furrr::furrr_options(seed = TRUE))) |>
 
       # Remove unnecessary columns
       dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
@@ -389,7 +389,7 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              tidyr::unnest(.data$predictions)
 
                                            return(cv_predictions)
-                                         }, .options = furrr::furrr_options(seed = y))) |>
+                                         }, .options = furrr::furrr_options(seed = TRUE))) |>
 
       # Remove unnecessary columns
       dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
