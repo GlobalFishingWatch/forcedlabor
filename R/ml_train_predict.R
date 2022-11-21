@@ -286,6 +286,8 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              dplyr::select(-.data$splits) |>
                                              dplyr::mutate(predictions =
                                                              purrr::map2(analysis,assessment,function(ind_anal,ind_assess){
+                                                               # Setting seed for seed sampling inside fit
+                                                               set.seed(y)
                                                                # fit model to analysis data
                                                                tmp_model <-
                                                                  workflows:::fit.workflow(object = cv_predictions_workflow,
@@ -368,6 +370,8 @@ ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
                                              dplyr::select(-.data$splits) |>
                                              dplyr::mutate(predictions =
                                                              purrr::map2(analysis,assessment,function(ind_anal,ind_assess){
+                                                               # Setting seed for seed sampling inside fit
+                                                               set.seed(y)
                                                                # fit model to analysis data
                                                                tmp_model <-
                                                                  workflows:::fit.workflow(object = cv_predictions_workflow,
