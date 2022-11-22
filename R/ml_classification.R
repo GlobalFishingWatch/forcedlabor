@@ -67,6 +67,7 @@ ml_classification <- function(data, steps = 1000,
     future::plan(future::multisession,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }
+  options(future.globals.maxSize = 1000000000)
 
   # unnesting the tibble inside the tibble
   # scores_df <- data |>
@@ -140,43 +141,6 @@ ml_classification <- function(data, steps = 1000,
     }, .options = furrr::furrr_options(seed = TRUE)))
 
   return(list(pred_conf = pred_conf, alpha = threshold_res$alpha))
-
-}
-
-
-#' Computes average confidence scores
-#'
-#' @description For each common seed and vessel-year, it computes the average
-#' confidence score.
-#'
-#' @param data tibble with at least a common_seed column and a prediction_output
-#' column The prediction_output column is a list. Each element contains a
-#' tibble with predictions and covariates.
-#' @return an object (tibble) with all the covariates that identify the
-#' vessel-years, and an average predicted probability for each vessel-year
-#' and common seed
-#'
-#' @importFrom tidyr unnest
-#' @import dplyr
-#'
-#' @export
-#'
-
-avg_confscore <- function(data) {
-
-  confscore_df <- data %>%
-    dplyr::select(.data$common_seed, .data$prediction_output) %>%
-    tidyr::unnest(.data$prediction_output) %>% # from having a list per cell to
-    # a tibble per cell
-    tidyr::unnest(.data$prediction_output) %>% # everything is a regular tibble
-    dplyr::group_by(dplyr::across(-.data$.pred_1)) %>% # group by everything
-    # except .pred_1 (only common_seed and indID actually matter but the other
-    # don't make a diff in the calculations and it's useful to have them for
-    # later)
-    dplyr::summarize(pred_mean = mean(.data$.pred_1, na.rm = TRUE),
-                     .groups = "drop")
-
-  return(confscore_df)
 
 }
 
