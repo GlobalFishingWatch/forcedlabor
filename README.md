@@ -1,11 +1,11 @@
 forcedlabor: forced labor model package
 ================
 
-Updated: 2022-02-01
+Updated: 2022-11-22
 
 # Overview
 
-`forcedlabor` is an R package containing the codes to identify forced
+`forcedlabor` is an R package containing functions to identify forced
 labor on fishing vessels via a machine learning algorithm trained on a
 combination of known forced labor cases and AIS data predictors.
 
@@ -40,25 +40,14 @@ devtools::install_github("GlobalFishingWatch/forcedlabor")
 
 # Using the package
 
-An example of how to use it is in
-[`/scripts/model_run.R`](https://github.com/GlobalFishingWatch/forcedlabor/blob/main/scripts/model_run.R)
+An example of how to use it is in a paper repo (soon to come)
 
 # Structure of the repository
 
 -   **R:** R functions of the package
--   **data:** Data files. For now, it contains a couple of output data
-    objects.
--   docs: Additional documentation (empty for now)
 -   **man:** Standard documentation files for R functions
--   models: Trained models, model summaries, etc. (empty for now)
--   notebooks: Jupyter notebooks and R markdown (empty for now)
--   outputs: Models results, static reports, etc.
-    -   figures: Figures (empty for now)
--   queries: SQL files (empty for now)
 -   **renv:** Contains files to activate the R environment with specific
     settings
--   **scripts:** Regular python and R files. Contains the script to run
-    the model.
 -   **.Rbuildignore** Contains names of files that should be ignored to
     build the R package
 -   **.Rprofile** Used in the R session to get the R environment of this

@@ -53,9 +53,8 @@ devtools::install_github("GlobalFishingWatch/forcedlabor")
 
 # Using the package
 
-An example of how to use it is in
-[`/scripts/model_run.R`](https://github.com/GlobalFishingWatch/forcedlabor/blob/main/scripts/model_run.R)
-But I should update this with a link to the other repo.
+An example of how to use it is in a paper repo (soon to come)
+
 
 # Structure of the repository
 
@@ -64,8 +63,6 @@ But I should update this with a link to the other repo.
 * **man:**          Standard documentation files for R functions
 * **renv:**         Contains files to activate the R environment with specific
                     settings
-* **scripts:**		  Regular python and R files. Contains the script to run the
-                    model.
 * **.Rbuildignore** Contains names of files that should be ignored to build
                     the R package
 * **.Rprofile**     Used in the R session to get the R environment of this

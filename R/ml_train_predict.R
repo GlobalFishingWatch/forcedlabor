@@ -5,7 +5,6 @@
 # fits a downsampled set of data to each model for each bag and each fold,
 # and predicts over its corresponding assessment set (for each fold)
 #'
-#' @param training_df data frame. training set.
 #' @param fl_rec recipe
 #' @param rf_spec model specifications
 #' @param cv_splits_all tibble containing tibbles of cross-validation splits.
@@ -47,7 +46,7 @@
 #' @export
 #'
 
-ml_training <- function(training_df, fl_rec, rf_spec, cv_splits_all,
+ml_training <- function(fl_rec, rf_spec, cv_splits_all,
                         bag_runs, down_sample_ratio, num_grid = 5,
                         parallel_plan = "multicore", free_cores = 1) {
 
@@ -177,7 +176,6 @@ ml_hyperpar <- function(train_pred_proba) {
 #' @description For each bag seed, fit one random forest to each bag in each
 #' fold, and predict over the assessment set and the holdout set.
 #'
-#' @param training_df training data frame
 #' @param fl_rec recipe
 #' @param rf_spec model specifications
 #' @param cv_splits_all tibble containing tibbles of cross-validation splits
@@ -222,7 +220,7 @@ ml_hyperpar <- function(train_pred_proba) {
 
 # Trains machine learning (RF with fixed hyperparameters) models and predicts
 
-ml_train_predict <- function(training_df, fl_rec, rf_spec, cv_splits_all,
+ml_train_predict <- function(fl_rec, rf_spec, cv_splits_all,
                              bag_runs, down_sample_ratio,
                              parallel_plan = "multicore", free_cores = 1,
                              prediction_df = NULL) {

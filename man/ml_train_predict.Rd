@@ -5,7 +5,6 @@
 \title{Trains machine learning (RF) models and predicts}
 \usage{
 ml_train_predict(
-  training_df,
   fl_rec,
   rf_spec,
   cv_splits_all,
@@ -17,8 +16,6 @@ ml_train_predict(
 )
 }
 \arguments{
-\item{training_df}{training data frame}
-
 \item{fl_rec}{recipe}
 
 \item{rf_spec}{model specifications}
