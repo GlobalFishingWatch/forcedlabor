@@ -25,19 +25,20 @@ ml_perf_metrics <- function(data) {
 
   recall_value <- data |>
     dplyr::filter(.data$holdout == 0 ) |>
-    yardstick::recall(truth = factor(.data$known_offender,
-                                     levels = c(1, 0)),
-                      estimate = factor(.data$pred_class,
-                                        levels = c(1, 0))) |>
-    dplyr::select(.data$.estimate) |>
+    dplyr::mutate(known_offender = stats::relevel(known_offender, "1", "0")) |>
+    dplyr::mutate(pred_class = stats::relevel(as.factor(pred_class), "1", "0")) |>
+    yardstick::recall(truth = known_offender,
+                      estimate = pred_class) |>
+    dplyr::select(.estimate) |>
     purrr::pluck(1)
 
   specif_value <- data |>
     dplyr::filter(.data$holdout == 1 & .data$known_non_offender == 1) |>
-    yardstick::spec(truth = factor(.data$known_offender, levels = c(1, 0)),
-                    estimate = factor(.data$pred_class,
-                                      levels = c(1, 0))) |>
-    dplyr::select(.data$.estimate) |>
+    dplyr::mutate(known_offender = stats::relevel(known_offender, "1", "0")) |>
+    dplyr::mutate(pred_class = stats::relevel(as.factor(pred_class), "1", "0")) |>
+    yardstick::spec(truth = known_offender,
+                    estimate = pred_class) |>
+    dplyr::select(.estimate) |>
     purrr::pluck(1)
 
 
