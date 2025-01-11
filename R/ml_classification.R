@@ -67,7 +67,7 @@ ml_classification <- function(data, steps = 1000,
     future::plan(future::multisession,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }
-  options(future.globals.maxSize = 1000000000)
+  # options(future.globals.maxSize = 1000000000)
 
   # unnesting the tibble inside the tibble
   # scores_df <- data |>
@@ -138,7 +138,7 @@ ml_classification <- function(data, steps = 1000,
 
       }
 
-    }, .options = furrr::furrr_options(seed = TRUE)))
+    }, .options = furrr::furrr_options(seed = TRUE))) # I MIGHT NEED TO CHANGE THAT
 
   return(list(pred_conf = pred_conf, alpha = threshold_res$alpha))
 

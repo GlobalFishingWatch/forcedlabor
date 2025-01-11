@@ -391,7 +391,7 @@ ml_train_predict <- function(fl_rec, rf_spec, cv_splits_all,
                                              tidyr::unnest(.data$predictions)
 
                                            return(cv_predictions)
-                                         }, .options = furrr::furrr_options(seed = TRUE))) |>
+                                         }, .options = furrr::furrr_options(seed = TRUE))) |> # I might need to change that
 
       # Remove unnecessary columns
       dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
