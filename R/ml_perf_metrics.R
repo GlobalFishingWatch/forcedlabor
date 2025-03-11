@@ -32,11 +32,20 @@ ml_perf_metrics <- function(data) {
     dplyr::select(.estimate) |>
     purrr::pluck(1)
 
-  specif_value <- data |>
+  specif_0 <- data |>
     dplyr::filter(.data$holdout == 1 & .data$known_non_offender == 1) |>
-    dplyr::mutate(known_offender = stats::relevel(known_offender, "1", "0")) |>
-    dplyr::mutate(pred_class = stats::relevel(as.factor(pred_class), "1", "0")) |>
-    yardstick::spec(truth = known_offender,
+    dplyr::mutate(known_offender = stats::relevel(known_offender, "1", "0"))
+
+  if (sum(specif_0$pred_class == 1) == 0){
+    specif_0 <- specif_0 |>
+      dplyr::mutate(pred_class = factor(pred_class, levels = c("1", "0")))
+  }else{
+    specif_0 <- specif_0 |>
+      dplyr::mutate(pred_class = stats::relevel(as.factor(pred_class), "1", "0"))
+  }
+
+  specif_value <- specif_0 |>
+      yardstick::spec(truth = known_offender,
                     estimate = pred_class) |>
     dplyr::select(.estimate) |>
     purrr::pluck(1)
