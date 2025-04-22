@@ -32,7 +32,9 @@ ml_perf_metrics <- function(data) {
     dplyr::select(.estimate) |>
     purrr::pluck(1)
 
-  specif_0 <- data |>
+  if (sum(data$holdout == 1) > 0){
+
+    specif_0 <- data |>
     dplyr::filter(.data$holdout == 1 & .data$known_non_offender == 1) |>
     dplyr::mutate(known_offender = stats::relevel(known_offender, "1", "0"))
 
@@ -45,14 +47,20 @@ ml_perf_metrics <- function(data) {
   }
 
   specif_value <- specif_0 |>
-      yardstick::spec(truth = known_offender,
+    yardstick::spec(truth = known_offender,
                     estimate = pred_class) |>
     dplyr::select(.estimate) |>
     purrr::pluck(1)
 
+  perf_metrics <- data.frame(recall = recall_value, specif = specif_value)
 
-    perf_metrics <- data.frame(recall = recall_value, specif = specif_value)
+  }else{
 
+    print('No data to compute specificity')
+
+    perf_metrics <- data.frame(recall = recall_value)
+
+  }
 
   return(perf_metrics)
 }
