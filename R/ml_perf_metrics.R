@@ -52,15 +52,16 @@ ml_perf_metrics <- function(data) {
     dplyr::select(.estimate) |>
     purrr::pluck(1)
 
-  perf_metrics <- data.frame(recall = recall_value, specif = specif_value)
-
   }else{
 
     print('No data to compute specificity')
 
-    perf_metrics <- data.frame(recall = recall_value)
+    specif_value <- NA
 
   }
+
+
+  perf_metrics <- data.frame(recall = recall_value, specif = specif_value)
 
   return(perf_metrics)
 }
