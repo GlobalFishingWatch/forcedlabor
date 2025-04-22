@@ -115,6 +115,8 @@ ml_classification <- function(data, steps = 1000,
                                                  ifelse(x > y, 1, 0)}))
 
 
+  if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2){
+
   pred_conf <- predclass_df |>
     dplyr::mutate(confidence = furrr::future_map_dbl(.data$indID, function(x){
 
@@ -140,7 +142,13 @@ ml_classification <- function(data, steps = 1000,
 
     }, .options = furrr::furrr_options(seed = TRUE))) # I MIGHT NEED TO CHANGE THAT
 
-  return(list(pred_conf = pred_conf, alpha = threshold_res$alpha))
+  }else{
+    print('not enough data to compute confidence levels')
+
+    pred_conf <- predclass_df
+  }
+
+  return(list(pred_conf = pred_conf, alpha = threshold_res$alpha, threshold = threshold_res$thres_star))
 
 }
 
