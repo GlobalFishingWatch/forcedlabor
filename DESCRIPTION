@@ -9,9 +9,8 @@ Description: forcedlabor is an R package containing the codes to identify forced
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.3.2
 Imports:
-    magrittr,
     dplyr,
     EnvStats,
     furrr,

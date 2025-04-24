@@ -67,50 +67,52 @@ ml_training <- function(fl_rec, rf_spec, cv_splits_all,
   # we train and predict probabilities of being an offender during
   # cross-validation
 
-  train_pred_proba <- bag_runs %>%
+  train_pred_proba <- bag_runs |>
     dplyr::mutate(
       # get a recipe with downsampling for each bag and corresponding seed
       fl_recipe = purrr::map(.data$recipe_seed, function(x) {
-        fl_rec_down <- fl_rec %>%
+        fl_rec_down <- fl_rec |>
           themis::step_downsample(known_offender,
                                   under_ratio = down_sample_ratio, seed = x,
-                                  skip = TRUE) #%>%
+                                  skip = TRUE) #|>
       })
-    ) %>%
+    ) |>
     # Make predictions for all CV folds and hyperparameters
     # Run this in parallel, so that each bag is processed on a parallel worker
-    dplyr::mutate(predictions = furrr::future_map2(.data$fl_recipe,
-                                                   .data$common_seed,
-                                                   function(x, y) {
-                                                     # Ensure all bags look the same across hyperparameter tuning grid
-                                                     set.seed(y)
-                                                     cv_splits <- cv_splits_all %>%
-                                                       dplyr::filter(.data$common_seed == y) %>%
-                                                       .$cv_splits %>%
-                                                       purrr::pluck(1) # unlist first (unique) element
-
-                                                     # specifying the workflow with the model, recipe for data and how the
-                                                     # tuning goes
-                                                     cv_predictions <- workflows::workflow() %>%
-                                                       workflows::add_model(rf_spec) %>%
-                                                       workflows::add_recipe(x) %>%
-                                                       tune::tune_grid(resamples = cv_splits,
-                                                                       # Automatically creates hyperparameter grid
-                                                                       # using a space-filling design (via a Latin hypercube)
-                                                                       grid = num_grid,
-                                                                       # Need to specify a metric to calculate, even though we
-                                                                       # won't use it for anything
-                                                                       # Doing ROC means that the predictions this outputs will be
-                                                                       # the raw numeric, rather than class
-                                                                       metrics = yardstick::metric_set(yardstick::roc_auc),
-                                                                       control = tune::control_resamples(save_pred = TRUE)) %>%
-                                                       dplyr::select(id, .data$.predictions) %>%
-                                                       tidyr::unnest(.data$.predictions) %>%
-                                                       dplyr::select(-.data$.pred_0, -.data$.config)
-                                                     return(cv_predictions)
-                                                   }, .options = furrr::furrr_options(seed = TRUE))) %>%
-    # Remove unnecessary columns
-    dplyr::select(-.data$recipe_seed, -.data$fl_recipe) %>%
+    dplyr::mutate(
+      predictions =
+        furrr::future_map2(
+          .data$fl_recipe,
+          .data$common_seed,
+          function(x, y) {
+            # Ensure all bags look the same across hyperparameter tuning grid
+            set.seed(y)
+            cv_splits <- cv_splits_all |>
+              dplyr::filter(.data$common_seed == y) |>
+              dplyr::select(., cv_splits) |>
+              purrr::pluck(1) # unlist first (unique) element
+       # specifying the workflow with the model, recipe for data and how the
+       # tuning goes
+             cv_predictions <- workflows::workflow() |>
+               workflows::add_model(rf_spec) |>
+               workflows::add_recipe(x) |>
+               tune::tune_grid(resamples = cv_splits,
+                               # Automatically creates hyperparameter grid
+                               # using a space-filling design (via a Latin hypercube)
+                               grid = num_grid,
+                               # Need to specify a metric to calculate, even though we
+                               # won't use it for anything
+                               # Doing ROC means that the predictions this outputs will be
+                               # the raw numeric, rather than class
+                               metrics = yardstick::metric_set(yardstick::roc_auc),
+                               control = tune::control_resamples(save_pred = TRUE)) |>
+               dplyr::select(id, .data$.predictions) |>
+               tidyr::unnest(.data$.predictions) |>
+               dplyr::select(-.data$.pred_0, -.data$.config)
+             return(cv_predictions)
+           }, .options = furrr::furrr_options(seed = TRUE))) |>
+  # Remove unnecessary columns
+    dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
     tidyr::unnest(.data$predictions)
 
   if (parallel_plan == "psock") {
@@ -140,29 +142,29 @@ ml_training <- function(fl_rec, rf_spec, cv_splits_all,
 
 ml_hyperpar <- function(train_pred_proba) {
 
-  roc_auc_results <- train_pred_proba %>%
+  roc_auc_results <- train_pred_proba |>
     dplyr::group_by(dplyr::across(-c(.data$.pred_1, .data$bag,
-                                     .data$known_offender, .data$.row, .data$counter))) %>%
+                                     .data$known_offender, .data$.row, .data$counter))) |>
     yardstick::roc_auc(truth = .data$known_offender,
-                       .data$.pred_1) %>%
-    dplyr::ungroup() %>% # getting auc per hyperparameter combination
+                       .data$.pred_1) |>
+    dplyr::ungroup() |> # getting auc per hyperparameter combination
     # auc because it's not corrupted by the conditions of our data
     # now we need to get stats across folds per hyperparameter combination
-    dplyr::group_by(dplyr::across(-c(.data$id, .data$.estimate))) %>%
+    dplyr::group_by(dplyr::across(-c(.data$id, .data$.estimate))) |>
     # Get mean, min of performance across folds for each hyperparameter
     # Will get NA if fold contains NAs or NaNs
     dplyr::summarize(mean_performance = mean(.data$.estimate),
-                     min_performance = min(.data$.estimate)) %>%
+                     min_performance = min(.data$.estimate)) |>
     dplyr::ungroup()
 
   # now we need to find the best hyperparameters using the best mean auc per
   # common_seed
-  best_hyperparameters <- roc_auc_results %>%
-    dplyr::arrange(dplyr::desc(.data$mean_performance)) %>%
-    dplyr::group_by(.data$common_seed) %>%
-    dplyr::slice(1) %>%
+  best_hyperparameters <- roc_auc_results |>
+    dplyr::arrange(dplyr::desc(.data$mean_performance)) |>
+    dplyr::group_by(.data$common_seed) |>
+    dplyr::slice(1) |>
     dplyr::select(-.data$.metric, -.data$.estimator, -.data$mean_performance,
-                  -.data$min_performance) %>%
+                  -.data$min_performance) |>
     dplyr::ungroup()
 
   return(list(auc_results = roc_auc_results,
@@ -252,7 +254,7 @@ ml_train_predict <- function(fl_rec, rf_spec, cv_splits_all,
           fl_rec_down <- fl_rec |>
             themis::step_downsample(known_offender,
                                     under_ratio = down_sample_ratio, seed = x,
-                                    skip = TRUE) #%>%
+                                    skip = TRUE) #|>
         })
       ) |>
       # Make predictions for all CV folds and hyperparameters
@@ -280,7 +282,7 @@ ml_train_predict <- function(fl_rec, rf_spec, cv_splits_all,
                                              dplyr::mutate(# Create analysis dataset based on CV folds
                                                analysis = purrr::map(.data$splits,~rsample::analysis(.x)),
                                                # Create assessment dataset based on CV folds
-                                               assessment = purrr:::map(.data$splits,~rsample::assessment(.x))) |>
+                                               assessment = purrr::map(.data$splits,~rsample::assessment(.x))) |>
                                              dplyr::select(-.data$splits) |>
                                              dplyr::mutate(predictions =
                                                              purrr::map2(analysis,assessment,function(ind_anal,ind_assess){
@@ -336,7 +338,7 @@ ml_train_predict <- function(fl_rec, rf_spec, cv_splits_all,
           fl_rec_down <- fl_rec |>
             themis::step_downsample(known_offender,
                                     under_ratio = down_sample_ratio, seed = x,
-                                    skip = TRUE) #%>%
+                                    skip = TRUE)
         })
       ) |>
       # Make predictions for all CV folds and hyperparameters
@@ -364,7 +366,7 @@ ml_train_predict <- function(fl_rec, rf_spec, cv_splits_all,
                                              dplyr::mutate(# Create analysis dataset based on CV folds
                                                analysis = purrr::map(.data$splits,~rsample::analysis(.x)),
                                                # Create assessment dataset based on CV folds
-                                               assessment = purrr:::map(.data$splits,~rsample::assessment(.x))) |>
+                                               assessment = purrr::map(.data$splits,~rsample::assessment(.x))) |>
                                              dplyr::select(-.data$splits) |>
                                              dplyr::mutate(predictions =
                                                              purrr::map2(analysis,assessment,function(ind_anal,ind_assess){
