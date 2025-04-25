@@ -80,7 +80,7 @@ ml_classification <- function(data, steps = 1000,
     # dplyr::select(.data$predictions) |>
     # tidyr::unnest(.data$predictions) |>  # from having a list per cell to
     # a tibble per cell
-    # tidyr::unnest(.data$prediction_output) %>% # everything is a regular tibble
+    # tidyr::unnest(.data$prediction_output) |> # everything is a regular tibble
     dplyr::group_by(dplyr::across(c(.data$indID, .data$holdout,
                                     .data$known_offender,
                                     .data$known_non_offender))) |>  # group by everything
