@@ -35,3 +35,4 @@ Suggests:
     tictoc
 URL: https://github.com/GlobalFishingWatch/forcedlabor
 BugReports: https://github.com/GlobalFishingWatch/forcedlabor/issues
+LazyData: true
