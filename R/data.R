@@ -2,7 +2,7 @@
 #'
 #' Description
 #'
-#' @format ## `new_training_data`
+#' @format
 #' A tibble with 10,072 rows and 30 columns:
 #' \describe{
 #'  \item{known_offender}{Whether the vessel-year combination is know to have
@@ -65,3 +65,4 @@
 #'
 #'  @source description, link to the preprint
 #'
+"new_training_data"

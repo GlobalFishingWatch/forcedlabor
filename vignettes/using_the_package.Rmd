@@ -21,7 +21,7 @@ devtools::load_all()
 
 
 Let's start by calling the package and the sample data
-```{r setup}
+```{r setup, eval = F}
 library(forcedlabor)
 
 ```
