@@ -3,3 +3,6 @@
 ^README\.Rmd$
 ^\.pre-commit-config\.yaml$
 ^LICENSE\.md$
+^data-raw$
+^doc$
+^Meta$

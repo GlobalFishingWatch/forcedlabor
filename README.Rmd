@@ -23,32 +23,20 @@ known forced labor cases and AIS data predictors.
 
 # Installation
 
-This R package is hosted on a private GitHub repository and can be installed
-using the `devtools` package. Run the following code to check if you already
-have `devtools` and install it if not.
+You can install the most recent version of `forcedlabor` using:
 
 
-``` r
-# Check/install devtools
-if (!require("devtools"))
-  install.packages("devtools")
-```
-
-To connect to GitHub, under the hood `devtools` calls the GitHub API. This means
-that you’ll need to have a personal access token (PAT). Get a PAT
-[here](https://github.com/settings/tokens) and make sure the “repo” scope is
-included.
-Save your PAT as an R environment variable (variables that should be available
-to R processes) by running `usethis::edit_r_environ()`, adding `GITHUB_PAT =
-"your PAT"`, and saving the updated `.Renviron` file. You might need to restart
-the R session.
-
-Finally, after saving your GitHub PAT to your R environment, install the
-`forcedlabor` package using `devtools`.
 
 ```{r eval = FALSE}
-# Install fishwatchr
-devtools::install_github("GlobalFishingWatch/forcedlabor")
+
+# Check/install remotes
+if (!require("remotes"))
+  install.packages("remotes")
+
+# Install the forcedlabor package
+
+remotes::install_github("GlobalFishingWatch/forcedlabor",
+                        dependencies = TRUE)
 ```
 
 # Using the package

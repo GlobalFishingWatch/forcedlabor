@@ -12,82 +12,188 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+
+options(rmarkdown.html_vignette.check_title = FALSE)
+
+devtools::load_all()
 ```
+
+
 
 Let's start by calling the package and the sample data
-```{r setup}
+```{r setup, eval = F}
 library(forcedlabor)
+
 ```
 
-There should be some description of the data and type of columns people should have
-And then some explanation for all below
+##### Training data
+
+The training data consists of vessel data at a yearly scale. This includes:
+
+- known_offender: if 1, then the vessel has a reported case of forced labor
+in that year. If 0, the vessel has no reported cases of forced labor in that 
+year
+- known_non_offender: if 1, then the vessel passed a labor-related inspection
+in that year. If 0, the vessel did not pass any labor-related inspections in 
+that year
+- source_id_number: one per forced labor report source
+- indID: an individual ID per vessel per year
+- flag_region: used later for fairness tests 
+
+vessel characteristics:
+
+- gear, engine_power_kw, tonnage_gt, length_m
+
+vessel behavior (based on AIS)
+
+- position_messages, hours, fishing_hours, average_daily_fishing_hours, 
+fishing_hours_foreign_eez, fishing_hours_high_seas,
+max_distance_from_shore_km, max_distance_from_port_km, number_encounters,
+number_forced_labor_encounters, average_encounter_duration_hours, 
+gaps_12_hours, average_off_distance_from_port_km, 
+average_off_distance_from_shore_km, average_gap_days, average_gap_km,
+number_foreign_port_visits, number_loitering_events,
+average_loitering_duration_hours, average_voyage_duration_hours,
+number_voyages
+
+
 
 ```{r}
-data("new_training_sample")
+
+data("new_training_data")
 
 new_training_data$known_non_offender <- as.factor(new_training_data$known_non_offender)
-levels(new_training_data$known_non_offender) <- c(levels(new_training_data$known_non_offender),1)
 
+levels(new_training_data$known_non_offender) <- 
+  c(levels(new_training_data$known_non_offender),1)
+
+
+```
+
+##### Writing the recipe
+
+`fl_rec` writes the recipe for the model
+
+- "known_offender" is set as the 'outcome' (what we are trying to predict)
+- "indID" is used as an identifier, and should not be used as a predictor
+- We remove "known_non_offender"
+  - as we cannot say with high confident that vessels did not engage in forced 
+  labor, so instead we are using a Positive-Unlabeled approach using 'positive' 
+  and 'unlabeled' cases for training and testing
+  - "known_non_offender" cases can be used later as 'expert-judgement-based
+  validation' to compute specificity 
+- We set "source_id_number" as a 'control'
+  - To reduce the risk of data leaking, we kept data from the same source 
+  in the same group, i.e. either all in training or all in test.
+  - Two vessels that were mentioned in the same forced labor report are likely
+  to show similar behaviors and may be related to each other, so when using one 
+  of them in the training set, the model would likely perform well on the other 
+  one, an artificial effect of using related cases to train and test.
+- We remove "flag_region" as this is not used for predictions, but is
+used later to assess fairness
+- Using `step_nzv` we only keep predictors with variances computationally 
+larger than zero.
+  - This step diagnoses predictors that have one unique value 
+  (i.e. are zero variance predictors) or predictors that have both of the 
+  following characteristics:
+  1. they have very few unique values relative to the number of samples
+  2. the ratio of the frequency of the most common value to the frequency of 
+  the second most common value is large.
+- Using `step_corr` we only keep predictors with bivariate correlations smaller 
+than 0.75.
+
+
+
+```{r fl_rec}
 
 ################## writing the recipe ##########################################
 
+
 fl_rec <- recipes::recipe(known_offender ~ .,
-                          # modeling known_offender using everything else
                           data = new_training_data) |>
-  # actually some are more id variables
   recipes::update_role(indID,
                        new_role = "id") |>
-  # actually I don't want to use other variables in the model
   recipes::update_role(flag_region, known_non_offender,
-                       ais_type, foc,
-                       number_poc_port_visits,
-                       distance_traveled_km,
                        new_role = "dont_use")  |>
-  # and some others will be useful for preventing data leakage
   recipes::update_role(source_id_number, new_role = "control")  |>
-  # Remove near-zero variance numeric predictors
   recipes::step_nzv(recipes::all_predictors())  |>
-  # almost zero variance removal (I don't think we have those though)
-  # Remove numeric predictors that have correlation greater the 75%
   recipes::step_corr(recipes::all_numeric(), threshold = 0.75)
 
+```
 
 
+##### Specifying the model
+
+`rf_spec` creates a random forest model specification using `parsnip`
+
+- The type of model used in a random forest `rand_forest()`
+- `trees = 500` sets the number of trees contained in the ensemble is set to 
+500
+- `mtry = 1` sets the number of features that will be sampled at each
+split
+- `min_n = 15` sets the min. node size (i.e. the number of vessel-years that a
+final node should have)
+- `set_mode("classification")`- the prediction outcome mode is set as 
+"classification" (vs "unknown", "regression" or "censored regression")
+- `set_engine("ranger", regularization.factor = 0.5)` sets the regularization
+factor works by penalizing new variables by multiplying the splitting criterion
+by a factor
+
+
+```{r fl_spec}
 ######### specifying the model #################################################
 
-# RF with hyperparameters based on sensitivity_hyper.r results
 rf_spec <-
-  # type of model # if no tuning # rand_forest()
   parsnip::rand_forest(trees = 500,
-                       # We will tune these two hyperparameters
                        mtry = 1,
                        min_n = 15) |>
-  # mode
   parsnip::set_mode("classification") |>
-  # engine/package
   parsnip::set_engine("ranger", regularization.factor = 0.5)
 
 
+```
 
+##### Training and testing scheme
+
+Defining some parameter values based on sensitivity results
+
+- `num_folds <- 5` splits the data into 5 groups 
+  - The data (positives and unlabeled) are split into five groups of roughly 
+  equal size.
+- `num_bags` sets the number of bags to run as 5
+- `down_sample_ratio` downsampling ratio set to 1:1
+  - To reduce the weight of the unlabeled cases in the model, we randomly 
+  downsampled them in the training set with a 1-1 ratio, i.e. the number of 
+  positive and unlabeled cases used for training would be equal.
+- `num_common_seeds <- 3` sets 3 random seeds 
+  - Setting up common seeds to use anywhere that uses random numbers.
+- `cv_splits_all` checks that we don't have any splitting across source_id 
+for the analysis and assessment datasets.
+
+- `ml_train_predict` is used to train the RF models for each bag seed. 
+For each bag seed, it generates a set of model hyperparameters configurations, 
+fits a downsampled set of data to each model for each bag and each fold, and 
+predicts over its corresponding assessment set (for each fold). 
+
+- It produces `train_pred_proba` which is a data frame of trained
+cross-validated datasets with several bags. 
+
+
+```{r train_pred_proba}
 ########### training and testing scheme ########################################
 
-## defining some parameter values based on sensitivity results
 num_folds <- 5
-num_bags <- 5 #10
-down_sample_ratio <- 1 # downsampling ratio
-# Set common seed to use anywhere that uses random numbers
-num_common_seeds <- 3 #3
+num_bags <- 5 
+down_sample_ratio <- 1 
+num_common_seeds <- 3 
 common_seed_tibble <- tibble::tibble(common_seed =
                                        seq(1:num_common_seeds) * 101)
 
 
 # Run all common_seeds
 bag_runs <- common_seed_tibble |>
-  # For each common_seed, run all bags
   tidyr::crossing(tibble::tibble(bag = seq(num_bags))) |>
-  # Will use different random seeds when implementing recipes for each bag
   dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) |>
-  # counter
   dplyr::mutate(counter = dplyr::row_number())
 
 ## parallelization strategy
@@ -126,17 +232,20 @@ train_pred_proba <- forcedlabor::ml_train_predict(fl_rec = fl_rec,
                                              prediction_df = NULL)
 tictoc::toc()
 
-# 561.196 sec elapsed
-# 1015.74 sec elapsed
-# 1310.657 sec elapsed
-
-# Got warning about source_id_number
 
 
+```
+
+##### Classification with dedpul
+
+`ml_classification` computes binary classification via DEDPUL.
+
+  -  For each vessel-year, it computes a binary classification, 0 non offender and 1 offender. 
+  - It is based on the DEDPUL algorithm.
+
+```{r classif_res, warning=FALSE}
 ####### Classification with dedpul ########################################
-# alpha value will be printed
 
-# I need to reinstall test branch of forcedlabor
 tictoc::tic()
 classif_res <- forcedlabor::ml_classification(data = train_pred_proba,
                                               steps = 1000, plotting = FALSE,
@@ -147,7 +256,21 @@ classif_res <- forcedlabor::ml_classification(data = train_pred_proba,
                                               free_cores = free_cores)
 tictoc::toc()
 
+```
 
+##### Recall and specificity
+
+
+`ml_perf_metrics` computes recall for assessment sets and specificity for 
+holdout non offenders
+
+  - Two performance metrics are computed:
+    1. recall, for assessment sets (in model versions that did not use them 
+  for training), 
+    2. specificity for holdout non offenders (in the same year of the
+    certification/inspection - if done at the end of the year)
+
+```{r perf_metrics}
 ########### Recall and specificity #################################################
 
 tictoc::tic()
