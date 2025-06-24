@@ -7,10 +7,10 @@
 ml_perf_metrics(data)
 }
 \arguments{
-\item{data}{tibble with at least a prediction_output column (pred_class),
-a holdout column (whether if the observation was used in the model or
-held out), a known_offender column (whether if the vessel was identified as
-an offender by reports), and a known_non_offender column (whether if the
+\item{data}{tibble with at least a prediction_output column (\code{pred_class}),
+a \code{holdout} column (whether if the observation was used in the model or
+held out), a \code{known_offender} column (whether the vessel was identified as
+an offender by reports), and a \code{known_non_offender} column (whether the
 vessel was identified as non offender by inspections).}
 }
 \value{
