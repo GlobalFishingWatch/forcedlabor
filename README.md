@@ -1,7 +1,7 @@
 forcedlabor: forced labor model package
 ================
 
-Updated: 2025-05-23
+Updated: 2025-06-23
 
 # Overview
 

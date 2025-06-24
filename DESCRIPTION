@@ -20,13 +20,10 @@ Imports:
     parallel,
     parallelly,
     purrr,
-    recipes,
     rsample,
     stats,
     themis,
     tidyr,
-    tidyselect,
-    tune,
     workflows,
     yardstick
 Suggests:
@@ -34,6 +31,7 @@ Suggests:
     knitr,
     parsnip,
     ranger,
+    recipes,
     rmarkdown,
     tibble,
     tictoc
