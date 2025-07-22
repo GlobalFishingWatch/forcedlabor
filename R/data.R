@@ -65,4 +65,4 @@
 #'
 #'  @source description, link to the preprint
 #'
-"new_training_data"
+"fl_training"

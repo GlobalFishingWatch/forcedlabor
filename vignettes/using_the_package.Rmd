@@ -60,12 +60,12 @@ number_voyages
 
 ```{r}
 
-data("new_training_data")
+data("fl_training")
 
-new_training_data$known_non_offender <- as.factor(new_training_data$known_non_offender)
+fl_training$known_non_offender <- as.factor(fl_training$known_non_offender)
 
-levels(new_training_data$known_non_offender) <- 
-  c(levels(new_training_data$known_non_offender),1)
+levels(fl_training$known_non_offender) <- 
+  c(levels(fl_training$known_non_offender),1)
 
 
 ```
@@ -110,7 +110,7 @@ than 0.75.
 
 
 fl_rec <- recipes::recipe(known_offender ~ .,
-                          data = new_training_data) |>
+                          data = fl_training) |>
   recipes::update_role(indID,
                        new_role = "id") |>
   recipes::update_role(flag_region, known_non_offender,
@@ -213,7 +213,7 @@ oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 cv_splits_all <- common_seed_tibble |>
   dplyr::mutate(cv_splits = purrr::map(common_seed, function(x) {
     set.seed(x)
-    rsample::group_vfold_cv(new_training_data,
+    rsample::group_vfold_cv(fl_training,
                             group = source_id_number,
                             v = num_folds)
   }))
