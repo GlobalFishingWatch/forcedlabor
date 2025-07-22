@@ -1,12 +1,12 @@
 
 library(dplyr)
 #load it
-load("./data-raw/new_training_data.rda")
+load("./data-raw/fl_training.rda")
 
 # #change the name of the object, modify columns, rename, reorder as needed
 # if you want to move some columns to the first positions you can also use dplyr::relocate().
 
-new_training_data <- new_training_data %>%
+fl_training <- new_training_data %>%
   select(known_offender, known_non_offender, indID, source_id_number, gear,
          engine_power_kw, tonnage_gt, length_m, position_messages,
          hours, fishing_hours, average_daily_fishing_hours,
@@ -21,5 +21,5 @@ new_training_data <- new_training_data %>%
 
 
 # use_data to this object, will recreate and compress automatically.
-usethis::use_data(new_training_data, overwrite = TRUE)
+usethis::use_data(fl_training, overwrite = TRUE)
 
