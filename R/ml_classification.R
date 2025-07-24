@@ -120,45 +120,22 @@ ml_classification <- function(data,
                                                threshold_res$thres_star, function(x, y) {
                                                  ifelse(x > y, 1, 0)}))
 
-
   if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2) {
 
-  pred_conf <- predclass_df |>
-    dplyr::mutate(confidence = furrr::future_map_dbl(.data$indID, function(x) {
+    confidence <- t( do.call(
+      cbind.data.frame,
+      lapply( split( predclass_df, predclass_df$indID),
+              FUN = conf_estimate, data = data,
+              threshold = threshold_res$thres_star)))
 
-      line_classif <- which(.data$indID == x) # in averaged data frame
-      predictions <- data$.pred_1[which(data$indID == x)]
-
-      if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))) {
-        conf <- 1
-      } else {
-        # beta fitting
-        beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
-
-        if (.data$pred_class[line_classif] == 1) {
-          conf <- stats::pbeta(q = threshold_res$thres_star,
-                               shape1 = beta_par[1],
-                               shape2 = beta_par[2],
-                               lower.tail = FALSE)
-
-        } else {
-          conf <- stats::pbeta(q = threshold_res$thres_star,
-                               shape1 = beta_par[1],
-                               shape2 = beta_par[2],
-                               lower.tail = TRUE)
-        }
-
-      }
-
-    }, .options = furrr::furrr_options(seed = TRUE))) # I MIGHT NEED TO CHANGE THAT
+    predclass_df$conf <- c(confidence)
 
   } else {
     print('not enough data to compute confidence levels')
 
-    pred_conf <- predclass_df
   }
 
-  return(list(pred_conf = pred_conf,
+  return(list(pred_conf = predclass_df,
               alpha = threshold_res$alpha,
               threshold = threshold_res$thres_star))
 }
