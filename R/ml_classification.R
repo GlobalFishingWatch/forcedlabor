@@ -122,18 +122,84 @@ ml_classification <- function(data,
 
   if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2) {
 
+    # library(future.apply)
+
+    # future_lapply()
+#
+#     tictoc::tic()
+#     confidence <- t( do.call(
+#       cbind.data.frame,
+#       lapply( split( predclass_df, predclass_df$indID),
+#               FUN = conf_estimate, data = data,
+#               threshold = threshold_res$thres_star)))
+#     tictoc::toc() # 7.5
+
+    # tictoc::tic()
     confidence <- t( do.call(
-      cbind.data.frame,
-      lapply( split( predclass_df, predclass_df$indID),
+      cbind.data.frame,parallel::mclapply( split(predclass_df, predclass_df$indID),
               FUN = conf_estimate, data = data,
-              threshold = threshold_res$thres_star)))
+              threshold = threshold_res$thres_star,
+              mc.cores = detectCores() - free_cores)))
+    # tictoc::toc() # 2.099
+#
+#         tictoc::tic()
+#         confidence <- t( do.call(
+#           cbind.data.frame,
+#           future.apply::future_lapply( split( predclass_df, predclass_df$indID),
+#                   FUN = conf_estimate, data = data,
+#                   threshold = threshold_res$thres_star)))
+#         tictoc::toc() # 23.084
+#
+#         tictoc::tic()
+#         confidence <- t( do.call(
+#           cbind.data.frame,
+#           future.apply::future_lapply( split( predclass_df, predclass_df$indID),
+#                                        FUN = conf_estimate, data = data,
+#                                        threshold = threshold_res$thres_star,
+#                                        future.scheduling = 0)))
+#         tictoc::toc() # 8.52
+#
+    # library(foreach)
+    # tictoc::tic()
+    # list_res <- foreach(i=1:dim(predclass_df)[1]) %do%
+    #   {options(warn = - 1)
+    #     # print(x)
+    #     predictions <- data$.pred_1[which(data$indID == predclass_df$indID[i])]
+    #     if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))) {
+    #       conf <- 1
+    #     } else {
+    #       # beta fitting
+    #       beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
+    #
+    #       # print(beta_par)
+    #
+    #       if (predclass_df$pred_class[i] == 1) {
+    #         conf <- stats::pbeta(q = threshold,
+    #                              shape1 = beta_par[1],
+    #                              shape2 = beta_par[2],
+    #                              lower.tail = FALSE)
+    #
+    #       } else {
+    #         conf <- stats::pbeta(q = threshold,
+    #                              shape1 = beta_par[1],
+    #                              shape2 = beta_par[2],
+    #                              lower.tail = TRUE)
+    #       }
+    #     }
+    #
+    #   }
+    # tictoc::toc() # 2.099
+
 
     predclass_df$conf <- c(confidence)
+
+
 
   } else {
     print('not enough data to compute confidence levels')
 
   }
+
 
   return(list(pred_conf = predclass_df,
               alpha = threshold_res$alpha,
