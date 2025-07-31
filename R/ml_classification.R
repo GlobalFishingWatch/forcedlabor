@@ -123,17 +123,20 @@ ml_classification <- function(data,
   if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2) {
 
     confidence <- t( do.call(
-      cbind.data.frame,
-      lapply( split( predclass_df, predclass_df$indID),
+      cbind.data.frame,parallel::mclapply( split(predclass_df, predclass_df$indID),
               FUN = conf_estimate, data = data,
-              threshold = threshold_res$thres_star)))
+              threshold = threshold_res$thres_star,
+              mc.cores = detectCores() - free_cores)))
 
     predclass_df$conf <- c(confidence)
+
+
 
   } else {
     print('not enough data to compute confidence levels')
 
   }
+
 
   return(list(pred_conf = predclass_df,
               alpha = threshold_res$alpha,
