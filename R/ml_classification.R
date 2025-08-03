@@ -126,7 +126,7 @@ ml_classification <- function(data,
       cbind.data.frame,parallel::mclapply( split(predclass_df, predclass_df$indID),
               FUN = conf_estimate, data = data,
               threshold = threshold_res$thres_star,
-              mc.cores = detectCores() - free_cores)))
+              mc.cores = parallel::detectCores() - free_cores)))
 
     predclass_df$conf <- c(confidence)
 
