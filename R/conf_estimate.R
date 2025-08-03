@@ -16,9 +16,11 @@
 conf_estimate <- function(predicted_df, data, threshold){
 
   options(warn = - 1)
-  # print(x)
+  # print(predicted_df$indID)
   predictions <- data$.pred_1[which(data$indID == predicted_df$indID)]
-  if (length(predictions) > 1 && (all(predictions == 1) || all(predictions == 0))) {
+  if ((length(predictions) > 1 &&
+       (all(predictions == 1) || all(predictions == 0))) ||
+      length(unique(predictions)) == 1)  {
     conf <- 1
   } else {
     # beta fitting
@@ -27,12 +29,17 @@ conf_estimate <- function(predicted_df, data, threshold){
     # print(beta_par)
 
     if (predicted_df$pred_class == 1) {
-      conf <- stats::pbeta(q = threshold,
-                           shape1 = beta_par[1],
-                           shape2 = beta_par[2],
-                           lower.tail = FALSE)
 
+      # if (beta_par$shape1 > 100 & beta_par$shape2 < 25){
+      #   conf <- 1
+      # }else{
+        conf <- stats::pbeta(q = threshold,
+                             shape1 = beta_par[1],
+                             shape2 = beta_par[2],
+                             lower.tail = FALSE)
+      # }
     } else {
+
       conf <- stats::pbeta(q = threshold,
                            shape1 = beta_par[1],
                            shape2 = beta_par[2],
