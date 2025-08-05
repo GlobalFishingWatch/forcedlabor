@@ -26,6 +26,8 @@ conf_estimate <- function(predicted_df, data, threshold){
     # beta fitting
     beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
 
+    # try to find something that breaks beta
+
     # print(beta_par)
 
     if (predicted_df$pred_class == 1) {

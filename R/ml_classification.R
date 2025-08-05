@@ -75,10 +75,10 @@ ml_classification <- function(data,
 
   # unnesting the tibble inside the tibble
   # scores_df <- data |>
-    # dplyr::select(.data$common_seed, .data$predictions) |>
-    # tidyr::unnest(.data$predictions) # |>  # from having a list per cell to
-    # # a tibble per cell
-    # tidyr::unnest(.data$predictions)
+  # dplyr::select(.data$common_seed, .data$predictions) |>
+  # tidyr::unnest(.data$predictions) # |>  # from having a list per cell to
+  # # a tibble per cell
+  # tidyr::unnest(.data$predictions)
 
   avgscore_df <- data |>
     # dplyr::select(.data$predictions) |>
@@ -122,13 +122,49 @@ ml_classification <- function(data,
 
   if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2) {
 
-    confidence <- t( do.call(
-      cbind.data.frame,parallel::mclapply( split(predclass_df, predclass_df$indID),
-              FUN = conf_estimate, data = data,
-              threshold = threshold_res$thres_star,
-              mc.cores = parallel::detectCores() - free_cores)))
+    confidence_list <- predclass_df |>
+      split(predclass_df$indID) |>
+      parallel::mclapply(FUN = conf_estimate, data = data,
+                         threshold = threshold_res$thres_star,
+                         mc.cores = parallel::detectCores() - free_cores)
 
-    predclass_df$conf <- c(confidence)
+    count_null <- sum(lengths(confidence_list) == 0)
+
+    if (count_null > 0){
+      print(paste0("nulls: ", count_null))
+      confidence_list <- confidence_list[lengths(confidence_list) != 0]
+    }
+
+    confidence_vector <- t(do.call(cbind.data.frame, confidence_list))
+    confidence_df <- data.frame(indID = rownames(confidence_vector),
+                                conf = confidence_vector)
+
+    predclass_df <- dplyr::left_join(predclass_df, confidence_df, by = dplyr::join_by(indID))
+    #
+    #
+    #
+    #     Dataframe with a nullfile - list
+    #
+    #     Broken split
+    #
+    #     titi <- t( do.call(
+    #       cbind.data.frame, confidence))
+    #
+    #       #
+    #       #
+    #     confidence <-  t( do.call(
+    #       cbind.data.frame, parallel::mclapply( split(predclass_df, predclass_df$indID),
+    #               FUN = conf_estimate, data = data,
+    #               threshold = threshold_res$thres_star,
+    #               mc.cores = parallel::detectCores() - free_cores)))
+    #
+    #     # quitar nulos a una lista
+    #     # t y cbind.data.frame
+    #     # left join, reemplazando con NAs
+
+
+
+    # predclass_df$conf <- c(confidence)
 
 
 
