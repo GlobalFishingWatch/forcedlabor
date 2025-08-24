@@ -3,6 +3,7 @@
 export(calibrated_threshold)
 export(dedpul_estimation)
 export(ml_classification)
+export(ml_hyperpar)
 export(ml_perf_metrics)
 export(ml_train_predict)
 export(ml_training)
