@@ -94,7 +94,7 @@ ml_training <- function(fl_rec,
             set.seed(y)
             cv_splits <- cv_splits_all |>
               dplyr::filter(.data$common_seed == y) |>
-              dplyr::select(., cv_splits) |>
+              purrr::pluck('cv_splits')  |>
               purrr::pluck(1) # unlist first (unique) element
             # specifying the workflow with the model, recipe for data and how the
             # tuning goes
