@@ -20,10 +20,13 @@ Imports:
     parallel,
     parallelly,
     purrr,
+    recipes,
     rsample,
     stats,
     themis,
+    tidyselect,
     tidyr,
+    tune,
     workflows,
     yardstick
 Suggests:
