@@ -17,7 +17,7 @@
 #' offenders to predict on. If NULL (default), then only predict on the training set
 #' @return an object with predicted values and fitted models
 #'
-#' @importFrom furrr future_map2
+#' @importFrom furrr future_pmap furrr_options
 #' @importFrom future cluster
 #' @importFrom future multicore
 #' @importFrom future multisession
@@ -27,7 +27,7 @@
 #' @importFrom parallelly makeClusterPSOCK
 #' @importFrom parallelly availableCores
 #' @importFrom purrr map
-#' @importFrom purrr map2
+#' @importFrom purrr pmap
 #' @importFrom purrr pluck
 #' @importFrom rsample analysis
 #' @importFrom rsample assessment
@@ -47,7 +47,8 @@ ml_train_predict <- function(fl_rec,
                              down_sample_ratio,
                              parallel_plan = "multicore",
                              free_cores = 1,
-                             prediction_df = NULL) {
+                             prediction_df = NULL,
+                             save_dir = "models") {
 
   # Setting up the parallelization
   if (parallel_plan == "multicore") {
@@ -65,57 +66,98 @@ ml_train_predict <- function(fl_rec,
 
   # here we train and predict probabilities of being an offender during
   # cross-validation
-    train_pred_proba <-
-      bag_runs |>
-      dplyr::mutate(
-        # get a recipe with downsampling for each bag and corresponding seed
-        fl_recipe = purrr::map(.data$recipe_seed, function(x) {
-          fl_rec_down <- fl_rec |>
-            themis::step_downsample(known_offender,
-                                    under_ratio = down_sample_ratio,
-                                    seed = x,
-                                    skip = TRUE)
-        })
-      ) |>
-      # Make predictions for all CV folds and hyperparameters
-      # Run this in parallel, so that each bag is processed on a parallel worker
-      dplyr::mutate(predictions =
-                      furrr::future_map2(.data$fl_recipe,
-                                         .data$common_seed,
-                                         function(x, y) {
-                                           # Ensure all bags look the same
-                                           set.seed(y)
-                                           # specifying the workflow with the model, recipe for data and how the
-                                           # tuning goes
-                                           cv_predictions_workflow <-
-                                             workflows::workflow() |>
-                                             workflows::add_model(rf_spec) |>
-                                             workflows::add_recipe(x)
+  train_pred_proba <-
+    bag_runs |>
+    dplyr::mutate(
+      # get a recipe with downsampling for each bag and corresponding seed
+      fl_recipe = purrr::map(.data$recipe_seed, function(x) {
+        fl_rec_down <- fl_rec |>
+          themis::step_downsample(known_offender,
+                                  under_ratio = down_sample_ratio,
+                                  seed = x,
+                                  skip = TRUE)
+      })
+    ) |>
+    # Make predictions for all CV folds and hyperparameters
+    # Run this in parallel, so that each bag is processed on a parallel worker
+    dplyr::mutate(predictions =
+                    furrr::future_pmap(list(.data$fl_recipe,
+                                            .data$common_seed,
+                                            .data$bag), # previously future_map2, now pmap to map 3 inputs
+                                       function(x, y, bag) # added .data$bag as third mapped input
+                                       {
+                                         if (!"themis" %in% loadedNamespaces())
+                                           requireNamespace("themis", quietly = TRUE) # ensure themis methods registered on workers (fixing error)
+                                         # Ensure all bags look the same
+                                         set.seed(y)
+                                         # specifying the workflow with the model, recipe for data and how the
+                                         # tuning goes
+                                         cv_predictions_workflow <-
+                                           workflows::workflow() |>
+                                           workflows::add_model(rf_spec) |>
+                                           workflows::add_recipe(x)
 
-                                           # get the folds related to that common seed, train and predict
-                                           cv_predictions <-
-                                             cv_splits_all |>
-                                             dplyr::filter(.data$common_seed == y) |>
-                                             purrr::pluck('cv_splits') |>
-                                             # .$cv_splits |>
-                                             purrr::pluck(1) |>  # unlist first (unique) element
-                                             dplyr::mutate(# Create analysis dataset based on CV folds
-                                               analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
-                                               # Create assessment dataset based on CV folds
-                                               assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
-                                             dplyr::select(-.data$splits) |>
-                                             dplyr::mutate(predictions =
-                                                             purrr::map2(analysis,
-                                                                         assessment,
-                                                                         function(ind_anal,ind_assess) {
-                                                                           # Setting seed for seed sampling inside fit
-                                                                           set.seed(y)
-                                                                           # fit model to analysis data
-                                                                           tmp_model <-
-                                                                             workflows:::fit.workflow(object = cv_predictions_workflow,
-                                                                                                      ind_anal)
+                                         # get the folds related to that common seed, train and predict
+                                         cv_predictions <-
+                                           cv_splits_all |>
+                                           dplyr::filter(.data$common_seed == y) |>
+                                           purrr::pluck('cv_splits') |>
+                                           # .$cv_splits |>
+                                           purrr::pluck(1) |>  # unlist first (unique) element
+                                           dplyr::mutate(# Create analysis dataset based on CV folds
+                                             analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
+                                             # Create assessment dataset based on CV folds
+                                             assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
+                                           dplyr::select(-.data$splits) |>
+                                           dplyr::mutate(predictions =
+                                                           purrr::pmap(list(analysis,
+                                                                            assessment,
+                                                                            id), # was map2 now pmap for 3 inputs
+                                                                       function(ind_anal,ind_assess, fold_id) # include id (fold_id)
+                                                                       {
+                                                                         if (!"themis" %in% loadedNamespaces())
+                                                                           requireNamespace("themis", quietly = TRUE) # ensure themis methods registered on workers (fixing error)
+
+                                                                         # Setting seed for seed sampling inside fit
+                                                                         set.seed(y)
+                                                                         # fit model to analysis data
+                                                                         tmp_model <-
+                                                                           workflows:::fit.workflow(object = cv_predictions_workflow,
+                                                                                                    ind_anal)
+
+                                                                         file_name <- file.path(                       # added filepath to save models with unique names
+                                                                           save_dir,
+                                                                           paste0("rf_seed", y, "_bag", bag, "_", fold_id, ".rds")
+                                                                         )
+                                                                         saveRDS(tmp_model, file_name)
+
+                                                                         # Predict over assessment data using fit
+                                                                         tmp_pred_assess <-
+                                                                           workflows:::predict.workflow(object = tmp_model,
+                                                                                                        new_data = ind_assess,
+                                                                                                        type = "prob") |>
+                                                                           dplyr::select(.data$.pred_1) |>
+                                                                           # Add columns to assessment data
+                                                                           dplyr::bind_cols(ind_assess[c("indID", "known_offender", "known_non_offender")]) |>
+                                                                           dplyr::mutate(holdout = 0)
+
+                                                                         if (is.null(prediction_df) == FALSE) { #bringing the logical clause here
+                                                                           # # Predict over data not used for training
+                                                                           tmp_pred <-
+                                                                             workflows:::predict.workflow(object = tmp_model,
+                                                                                                          new_data = prediction_df,
+                                                                                                          type = "prob") |>
+                                                                             dplyr::select(.data$.pred_1) |>
+                                                                             # Add columns to prediction data
+                                                                             # (might be a warning about levels in source_id but it's not important,
+                                                                             # we won't use that column anyway)
+                                                                             dplyr::bind_cols(prediction_df[c("indID", "known_offender", "known_non_offender")]) |>
+                                                                             dplyr::mutate(holdout = 1) |>
+                                                                             dplyr::bind_rows(tmp_pred_assess)
+                                                                         } else {
+
                                                                            # Predict over assessment data using fit
-                                                                           tmp_pred_assess <-
+                                                                           tmp_pred <-
                                                                              workflows:::predict.workflow(object = tmp_model,
                                                                                                           new_data = ind_assess,
                                                                                                           type = "prob") |>
@@ -123,56 +165,25 @@ ml_train_predict <- function(fl_rec,
                                                                              # Add columns to assessment data
                                                                              dplyr::bind_cols(ind_assess[c("indID", "known_offender", "known_non_offender")]) |>
                                                                              dplyr::mutate(holdout = 0)
+                                                                           # no bind_rows?
+                                                                         }
 
-                                                                           if (is.null(prediction_df) == FALSE) { #bringing the logical clause here
-                                                                             # # Predict over data not used for training
-                                                                             tmp_pred <-
-                                                                               workflows:::predict.workflow(object = tmp_model,
-                                                                                                            new_data = prediction_df,
-                                                                                                            type = "prob") |>
-                                                                               dplyr::select(.data$.pred_1) |>
-                                                                               # Add columns to prediction data
-                                                                               # (might be a warning about levels in source_id but it's not important,
-                                                                               # we won't use that column anyway)
-                                                                               dplyr::bind_cols(prediction_df[c("indID", "known_offender", "known_non_offender")]) |>
-                                                                               dplyr::mutate(holdout = 1) |>
-                                                                               dplyr::bind_rows(tmp_pred_assess)
-                                                                           } else {
+                                                                         return(tmp_pred)
 
-                                                                             # Predict over assessment data using fit
-                                                                             tmp_pred <-
-                                                                               workflows:::predict.workflow(object = tmp_model,
-                                                                                                            new_data = ind_assess,
-                                                                                                            type = "prob") |>
-                                                                               dplyr::select(.data$.pred_1) |>
-                                                                               # Add columns to assessment data
-                                                                               dplyr::bind_cols(ind_assess[c("indID", "known_offender", "known_non_offender")]) |>
-                                                                               dplyr::mutate(holdout = 0)
-                                                                             # no bind_rows?
-                                                                           }
+                                                                       })) |>
+                                           dplyr::select(.data$id, .data$predictions) |>
+                                           tidyr::unnest(.data$predictions)
 
-                                                                           return(tmp_pred)
-
-                                                                         })) |>
-                                             dplyr::select(.data$id, .data$predictions) |>
-                                             tidyr::unnest(.data$predictions)
-
-                                           return(cv_predictions)
-                                         },
-                                         .options = furrr::furrr_options(seed = TRUE))) |>
-
-      # Remove unnecessary columns
-      dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
-      tidyr::unnest(.data$predictions)
-
-
+                                         return(cv_predictions)
+                                       },
+                                       .options = furrr::furrr_options(seed = TRUE, packages = c("themis")))) |>
+    # Remove unnecessary columns
+    dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
+    tidyr::unnest(.data$predictions)
 
   if (parallel_plan == "psock") {
     parallel::stopCluster(cl)
   }
 
-
-
   return(models_pred = train_pred_proba)
-
 }
