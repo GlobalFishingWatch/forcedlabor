@@ -1,11 +1,16 @@
 ---
 title: "Using the package"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+bibliography: references.bib
 vignette: >
   %\VignetteIndexEntry{using_the_package}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
@@ -18,47 +23,79 @@ options(rmarkdown.html_vignette.check_title = FALSE)
 devtools::load_all()
 ```
 
+## Overview
 
+`forcedlabor` is an R package to train a positive–unlabeled (PU) model to 
+detect fishing vessels exhibiting behaviors or characteristics consistent 
+with forced-labor offenders. 
+Features (movement patterns and vessel characteristics) are computed from 
+AIS data.
+We have used Global Fishing Watch’s AIS data pipeline. 
+The package assumes access to AIS (or other vessel tracking) data.
 
-Let's start by calling the package and the sample data
 ```{r setup, eval = F}
 library(forcedlabor)
+```
+
+### Model workflow 
+
+The model workflow contains the following:
+Steps 1-3 involve data and model prep
+Steps 4-8 use the package functions
+Steps 9 and 10 are additional steps for assessing model performance and fairness
+(not included in workflow plot)
+
+```{r workflow, echo=FALSE, out.width="100%"}
+
+img <- normalizePath(file.path("vignettes", "fig01_model_workflow.png"), mustWork = TRUE)
+knitr::include_graphics(img, rel_path = FALSE)
 
 ```
 
-##### Training data
+The model workflow replicates that in [@joo_2023].
 
-The training data consists of vessel data at a yearly scale. This includes:
+1. Data: the training data is loaded. 
+This contains AIS-derived data at a yearly scale for positive vessels 
+(`known_offender = 1`) and unlabeled vessels (`known_offender = 0`)
+2. (Same) 5-fold CV: creates grouped folds by `source_id_number` so related 
+vessels stay together, rotating the assessment fold per seed.
+3. Fit random forests: for each fold × bag × seed, fit an RF using the 
+recipe/spec, with 1:1 down-sampling applied to the analysis split.
+4. Predicted scores: Collect out-of-fold probabilities `.pred_1` via 
+package function `ml_train_predict()`
+5. Predictions from all seeds: pool the `.pred_1` scores across all seeds and 
+bags into `train_pred_proba`
+6. Density-based threshold (DEDPUL): `ml_classification()` function averages 
+scores to `pred_mean`, estimates alpha (α) on assessment data, and chooses a 
+calibrated threshold (t)
+7. Classification: Apply 't' to `pred_mean` to produce the binary label 
+`pred_class` (1 positive, 0 negative)
+8. Confidence: Compute a confidence score per vessel based on 
+variation across seeds × bags.
 
-- known_offender: if 1, then the vessel has a reported case of forced labor
-in that year. If 0, the vessel has no reported cases of forced labor in that 
-year
-- known_non_offender: if 1, then the vessel passed a labor-related inspection
-in that year. If 0, the vessel did not pass any labor-related inspections in 
-that year
-- source_id_number: one per forced labor report source
-- indID: an individual ID per vessel per year
-- flag_region: used later for fairness tests 
+Additional steps:
 
-vessel characteristics:
-
-- gear, engine_power_kw, tonnage_gt, length_m
-
-vessel behavior (based on AIS)
-
-- position_messages, hours, fishing_hours, average_daily_fishing_hours, 
-fishing_hours_foreign_eez, fishing_hours_high_seas,
-max_distance_from_shore_km, max_distance_from_port_km, number_encounters,
-number_forced_labor_encounters, average_encounter_duration_hours, 
-gaps_12_hours, average_off_distance_from_port_km, 
-average_off_distance_from_shore_km, average_gap_days, average_gap_km,
-number_foreign_port_visits, number_loitering_events,
-average_loitering_duration_hours, average_voyage_duration_hours,
-number_voyages
+9. Model performance: Report recall on assessment folds and specificity 
+if a holdout is provided using package function `ml_perf_metrics`
+10. Fairness tests: Evaluate recall parity across non-modeled groups 
+(e.g., flag_region, gear) as post-hoc diagnostics
 
 
+## Pre-package data and model prep
 
-```{r}
+Before using the package functions we load the training data
+and prep the model
+
+### 1. Data
+
+#### Training data
+
+The model starts with loading the required training data (`fl_training`).
+This table contains AIS-derived data at a yearly scale for positive vessels 
+(`known_offender = 1`) and unlabeled vessels (`known_offender = 0`). 
+
+
+```{r load_data}
 
 data("fl_training")
 
@@ -66,48 +103,187 @@ fl_training$known_non_offender <- as.factor(fl_training$known_non_offender)
 
 levels(fl_training$known_non_offender) <- 
   c(levels(fl_training$known_non_offender),1)
+```
 
+
+##### Positives: offenders
+
+The training dataset includes a list of positive (known_offender = 1) 
+and unlabeled (known_offender = 0) vessels and their corresponding outputs 
+from tracking data. 
+
+Our offender data has come from external reports on forced labor. 
+In many cases the exact date of the offence is unclear, hence why 
+we work on a yearly scale. 
+Reported cases were then matched to AIS data. 
+
+##### (Optional) holdout dataset via `prediction_df`
+
+- The model is not trained on negative cases (`known_non_offender = 1`)
+- If negative data is available, it can be used in the `prediction_df` to 
+calculate specificity (but `prediction_df` is not used in training)
+- If non-offender data is not available, `prediction_df` should be set to `NULL` 
+    - Note that when `prediction_df` = `NULL`, specificity cannot be computed
+
+
+##### Unlabeled
+
+All fishing vessels with no reported forced labor offences. 
+
+
+##### Predictors
+
+We use 26 variables as predictors. 
+The features used for classification corresponded to vessel characteristics 
+and movement patterns computed from Automatic Identification System (AIS) data.
+
+The rationale behind why we selected these features is provided below.
+
+**Vessel characteristics**
+
+Gear type shape expected movement.
+Length, tonnage and engine power may enable longer, farther operations—factors 
+associated with elevated forced-labor risk.
+
+**Fishing hours**
+
+Excessive work is a common indicator of abuse, so we include total and average 
+daily fishing hours to capture unusually long daily or yearly effort.
+
+**Distant water fishing**
+
+Time in foreign EEZs or on the High Seas and large distances from shore and 
+port increase jurisdictional complexity and remoteness, raising risk of forced
+labor.
+
+**Transshipment, encounters, and loitering**
+
+Encounter and loitering patterns can indicate transshipment. 
+Transhipment can prolong the time at sea, and enabling crew transfers.
+Both of which are linked to higher risk of forced labor.
+
+**AIS gaps**
+
+Gaps in AIS can obscure activity and mask behaviours such as transshipment or 
+other evasive practices.
+
+**Foreign port visits**
+
+Frequent foreign port calls can signal distant-water operations or recruitment 
+pathways via ports with weaker oversight.
+
+**Length of time at sea**
+
+Long voyages and infrequent port returns reduce monitoring and limit crew 
+opportunities to report or exit abusive conditions.
+
+```{r training_data}
+dplyr::glimpse(fl_training)
+```
+
+### 2. (Same) 5-fold Cross Validation
+
+Once the training data is loaded, we set up our 5-fold CV.
+Here, the data (positives and unlabeled) are split into five groups of 
+roughly equal size.
+One of the groups is designated as the test set, and the others are part of 
+the training set. 
+The role of the test set is rotated among the group five times.
+
+To reduce the risk of data leakage, we keep data from the same source (in our
+case from the same forced labor report) in the same group.
+This means that vessels with the same `source_id_number` will either all be
+in training or all in test.
+We do this as two vessels from the same report are likely to have similar
+behaviors and characteristics, and so so when using one of them in the 
+training set, the model would likely
+perform well on the other one, an artificial effect of using related cases to 
+train and test.
+
+#### Cross-validation setup (folds, bags, seeds)
+
+- `num_folds <- 5` splits the data into 5 groups of roughly equal size
+    - More folds means better use of data and therefore lower likelihood of 
+    bias, but also means more computational costs
+- `num_bags` sets the number of bags to run as 5
+  - More bags mean more stable probability estimates across resampling
+- `down_sample_ratio` downsampling ratio set to 1:1
+  - To reduce the weight of the unlabeled cases in the model, we randomly 
+  downsampled them in the training set with a 1-1 ratio, i.e. the number of 
+  positive and unlabeled cases used for training would be equal
+  - This downsampling ratio is used later by the `ml_train_predict` (Step 4)
+  but is included here for clarity
+- `num_common_seeds <- 3` sets 3 random seeds 
+  - Setting up common seeds to use anywhere that uses random numbers.
+  - Using fewer seeds is faster, but will be more sensitive to random chance
+- `cv_splits_all` checks that we don't have any splitting across source_id 
+for the analysis and assessment datasets
+
+
+```{r cv_splits}
+
+num_folds <- 5
+num_bags <- 5 
+down_sample_ratio <- 1
+num_common_seeds <- 3 
+common_seed_tibble <- tibble::tibble(common_seed =
+                                       seq(1:num_common_seeds) * 101)
+
+
+# Run all common_seeds
+bag_runs <- common_seed_tibble |>
+  tidyr::crossing(tibble::tibble(bag = seq(num_bags))) |>
+  dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) |>
+  dplyr::mutate(counter = dplyr::row_number())
+
+## Cross Validation 
+# Ensure there is no splitting across source_id across analysis and assessment
+# data sets.  Need to make separate splits for each seed.
+cv_splits_all <- common_seed_tibble |>
+  dplyr::mutate(cv_splits = purrr::map(common_seed, function(x) {
+    set.seed(x)
+    rsample::group_vfold_cv(fl_training,
+                            group = source_id_number,
+                            v = num_folds)
+  }))
 
 ```
 
-##### Writing the recipe
 
-`fl_rec` writes the recipe for the model
+### 3. Fit random forests
 
-- "known_offender" is set as the 'outcome' (what we are trying to predict)
-- "indID" is used as an identifier, and should not be used as a predictor
-- We remove "known_non_offender"
-  - as we cannot say with high confident that vessels did not engage in forced 
-  labor, so instead we are using a Positive-Unlabeled approach using 'positive' 
-  and 'unlabeled' cases for training and testing
-  - "known_non_offender" cases can be used later as 'expert-judgement-based
-  validation' to compute specificity 
-- We set "source_id_number" as a 'control'
-  - To reduce the risk of data leaking, we kept data from the same source 
-  in the same group, i.e. either all in training or all in test.
-  - Two vessels that were mentioned in the same forced labor report are likely
-  to show similar behaviors and may be related to each other, so when using one 
-  of them in the training set, the model would likely perform well on the other 
-  one, an artificial effect of using related cases to train and test.
-- We remove "flag_region" as this is not used for predictions, but is
-used later to assess fairness
-- Using `step_nzv` we only keep predictors with variances computationally 
-larger than zero.
+#### Writing the recipe
+
+Next, we want to write the recipe for the model. 
+Here we set the roles of the different variables that will be used. 
+
+**Setting the roles of the variables used**
+
+- `known_offender` is set as the **outcome** i.e. the target we predict
+- `indID` is set as an "id" value and is not used as a predictor
+- `known_non_offender` is not used as a predictor (role "dont_use")
+    - if available, use `known_non_offender`  in a holdout `prediction_df` to 
+      compute specificity later
+- `source_id_number` is set as "control"
+- `flag_region` is not used as a predictor (role "dont_use")
+      - it is reserved for post-hoc fairness checks 
+- **Predictors**: All remaining variables in `fl_training` are treated as 
+predictors
+
+**Variable preprocessing**
+
+- We use `step_nzv()` to retain predictors with non-zero variance
   - This step diagnoses predictors that have one unique value 
   (i.e. are zero variance predictors) or predictors that have both of the 
   following characteristics:
-  1. they have very few unique values relative to the number of samples
-  2. the ratio of the frequency of the most common value to the frequency of 
+    1. they have very few unique values relative to the number of samples
+    2. the ratio of the frequency of the most common value to the frequency of 
   the second most common value is large.
 - Using `step_corr` we only keep predictors with bivariate correlations smaller 
 than 0.75.
 
 
-
 ```{r fl_rec}
-
-################## writing the recipe ##########################################
-
 
 fl_rec <- recipes::recipe(known_offender ~ .,
                           data = fl_training) |>
@@ -122,26 +298,44 @@ fl_rec <- recipes::recipe(known_offender ~ .,
 ```
 
 
-##### Specifying the model
+#### Specifying the model
 
-`rf_spec` creates a random forest model specification using `parsnip`
+Next, we define the classifier. 
+We use a Random Forest via `parsnip` with the `ranger` engine.
 
-- The type of model used in a random forest `rand_forest()`
+- The type of model used is a random forest `rand_forest()`
 - `trees = 500` sets the number of trees contained in the ensemble is set to 
 500
+  - The larger the number of trees, the more stable the predictions - but with
+  a higher computational cost
 - `mtry = 1` sets the number of features that will be sampled at each
 split
-- `min_n = 15` sets the min. node size (i.e. the number of vessel-years that a
-final node should have)
-- `set_mode("classification")`- the prediction outcome mode is set as 
-"classification" (vs "unknown", "regression" or "censored regression")
-- `set_engine("ranger", regularization.factor = 0.5)` sets the regularization
-factor works by penalizing new variables by multiplying the splitting criterion
+  -  `mtry` must be ≤ the number of predictors in the dataset
+  - Lower values encourage diversity between trees (higher variance, 
+  less correlation)
+  - Higher values let the model consider more predictors, potentially improving 
+  accuracy but also with a risk of overfitting
+- `min_n = 15` sets the minimum node size (i.e. the number of vessel-years that 
+a final node should have)
+  - Larger values create less complex trees, and may result in underfitting
+  - Smaller values create more complex trees, and may result in overfitting
+- `set_mode("classification")` the prediction outcome mode is set as 
+"classification" 
+- `set_engine("ranger", regularization.factor = 0.5)` 
+- `set_engine()` 
+  - `ranger` is particularly useful when dealing with data with a high number of
+  features as it provides memory-efficient yet quick implementation
+- `regularization.factor = 0.5` sets the regularization factor works by 
+penalizing new variables by multiplying the splitting criterion
 by a factor
+  - As a result, the tree is biased to keep splitting on features it already 
+  trusts, rather than constantly introducing fresh ones
+    - `f = 0.5`: half the gain for “new” variables, forcing the forest to only 
+    bring in a new predictor if it improves impurity by at least twice as much
+    the default would require
 
 
 ```{r fl_spec}
-######### specifying the model #################################################
 
 rf_spec <-
   parsnip::rand_forest(trees = 500,
@@ -150,52 +344,20 @@ rf_spec <-
   parsnip::set_mode("classification") |>
   parsnip::set_engine("ranger", regularization.factor = 0.5)
 
-
 ```
 
-##### Training and testing scheme
+#### Parallelization strategy
 
-Defining some parameter values based on sensitivity results
+We parallelize the bag x seed training across local CPU cores using `future`
 
-- `num_folds <- 5` splits the data into 5 groups 
-  - The data (positives and unlabeled) are split into five groups of roughly 
-  equal size.
-- `num_bags` sets the number of bags to run as 5
-- `down_sample_ratio` downsampling ratio set to 1:1
-  - To reduce the weight of the unlabeled cases in the model, we randomly 
-  downsampled them in the training set with a 1-1 ratio, i.e. the number of 
-  positive and unlabeled cases used for training would be equal.
-- `num_common_seeds <- 3` sets 3 random seeds 
-  - Setting up common seeds to use anywhere that uses random numbers.
-- `cv_splits_all` checks that we don't have any splitting across source_id 
-for the analysis and assessment datasets.
+- `parallel_plan`:
+  - "multisession" spawns separate R sessions (safe on Windows & RStudio).
+  - "multicore" uses Unix forking (Linux/Mac in plain R; not on Windows/RStudio).
+  - "psock" is a portable fallback if multisession misbehaves (slightly slower).
+- `free_cores = 4`: keep 4 cores free for your system
+- `future.globals.maxSize`: max bytes of objects sent to workers 
 
-- `ml_train_predict` is used to train the RF models for each bag seed. 
-For each bag seed, it generates a set of model hyperparameters configurations, 
-fits a downsampled set of data to each model for each bag and each fold, and 
-predicts over its corresponding assessment set (for each fold). 
-
-- It produces `train_pred_proba` which is a data frame of trained
-cross-validated datasets with several bags. 
-
-
-```{r train_pred_proba}
-########### training and testing scheme ########################################
-
-num_folds <- 5
-num_bags <- 5 
-down_sample_ratio <- 1 
-num_common_seeds <- 3 
-common_seed_tibble <- tibble::tibble(common_seed =
-                                       seq(1:num_common_seeds) * 101)
-
-
-# Run all common_seeds
-bag_runs <- common_seed_tibble |>
-  tidyr::crossing(tibble::tibble(bag = seq(num_bags))) |>
-  dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) |>
-  dplyr::mutate(counter = dplyr::row_number())
-
+```{r parallel_plan}
 ## parallelization strategy
 parallel_plan <- "multisession" # multisession if running from RStudio, or
 # multicore if from Linux, Mac and plain R, or
@@ -207,45 +369,98 @@ free_cores <- 4 # add more if you need to do many things at the same time
 oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 # options(future.globals.maxSize = 50 * 1024 ^ 3)
 
-## CROSS VALIDATION ##
-# Ensure there is no splitting across source_id across analysis and assessment
-# data sets.  Need to make separate splits for each seed.
-cv_splits_all <- common_seed_tibble |>
-  dplyr::mutate(cv_splits = purrr::map(common_seed, function(x) {
-    set.seed(x)
-    rsample::group_vfold_cv(fl_training,
-                            group = source_id_number,
-                            v = num_folds)
-  }))
 
-cv_splits_all$cv_splits[1]
+```
+
+
+## Using the `forcedlabor` package functions
+
+Once the training data has been prepped and the model recipe and specifications
+set, we can now use the package functions to fit models and generate scores. 
+
+### 4. Predicted scores (using `ml_train_predict`)
+
+- `ml_train_predict`: fits a Random Forest for each fold x bag x seed using
+the previous recipe and specification steps
+- It applies a downsampling ratio of 1:1 to the training set
+- This step returns `train_pred_proba` a table with probabilities for
+assessment rows 
+
+### 5. Predictions from all seeds (using `ml_train_predict`)
+
+- `ml_train_predict` also pools scores across all seeds and bags
+
+
+```{r train_pred_proba}
+
 
 ### training and prediction (scores)
 
 tictoc::tic()
-train_pred_proba <- ml_train_predict(fl_rec = fl_rec,
-                                     rf_spec = rf_spec,
-                                     cv_splits_all = cv_splits_all,
-                                     bag_runs = bag_runs,
-                                     down_sample_ratio = down_sample_ratio,
-                                     parallel_plan = parallel_plan,
-                                     free_cores = free_cores,
-                                     prediction_df = NULL)
+train_pred_proba <- ml_train_predict(
+  fl_rec = fl_rec,
+  rf_spec = rf_spec,
+  cv_splits_all = cv_splits_all,
+  bag_runs = bag_runs,
+  down_sample_ratio = down_sample_ratio,
+  parallel_plan = parallel_plan,
+  free_cores = free_cores,
+  prediction_df = NULL
+)
+
 tictoc::toc()
+```
+
+`train_pred_proba` contains the following:
+
+- `common_seed`: which randomization seed was used to generate both your 
+down‑sampling and your CV splits for this batch of runs
+- `bag`: which down‑sample “bag” this row belongs to
+- `counter`: a simple row index for the combination of seed x bag grid
+- `id`: the fold identifier from your CV split
+- `.pred_1`: the model’s predicted probability that this particular row is 
+positive
+- `indID`: a unique vessel identifier
+- `known offender`: if the vessel is positive
+- `known non offender`: if the vessel is negative
+- `holdout`: if 0, one of your CV assessment folds, if 1, an external 
+hold‑out dataset (if passed via prediction_df)
+    - If you have no `prediction_df = NULL`, all rows have `holdout == 0`
 
 
+```{r train_pred_proba_output}
+
+dplyr::glimpse(train_pred_proba)
 
 ```
 
-##### Classification with dedpul
+### 6. Density-based algorithm for classification threshold (using `ml_classification`)
 
-`ml_classification` computes binary classification via DEDPUL.
+`ml_classification` aggregates `.pred_1` per `indID` to `pred_mean`, 
+estimates α (upper bound on positives in the unlabeled set), 
+and chooses a calibrated threshold `t` so the share of 
+predicted positives ≈ α (DEDPUL).
 
-  -  For each vessel-year, it computes a binary classification, 0 non offender and 1 offender. 
-  - It is based on the DEDPUL algorithm.
+See [@ivanov_2020] for more details on the DEDPUL alogirthm. 
+
+**Tunable args:**
+
+- `steps`: when setting `steps` there is a balance between too few steps 
+overpredicting positives, and too many slowing down for little gain
+  - `steps` must be at least 3 in order to calculate the second derivative
+- `threshold` and `eps`: these are used to set the threshold for what is
+considered positive or negative
+  - `threshold` sets the list of candidate cut‑offs to see what gets us 
+  closest to the alpha, so that the threshold of classification t is such that 
+  the proportion of positive predictions is equal (or approximately equal) to α
+  - `eps` is the range from this alpha that we are willing to accept
+    - setting `eps` too low will likely return an error, as none of the 
+    candidates
+are within the range
+- If `plotting = TRUE`, a D vs. alpha plot is generated
+
 
 ```{r classif_res, warning=FALSE}
-####### Classification with dedpul ########################################
 
 tictoc::tic()
 classif_res <- ml_classification(data = train_pred_proba,
@@ -258,25 +473,97 @@ classif_res <- ml_classification(data = train_pred_proba,
                                  free_cores = free_cores)
 tictoc::toc()
 
+
 ```
 
-##### Recall and specificity
+
+### 7. Classification (using `ml_classification`)
+
+- Within `ml_classification` we apply the calibrated threshold `t` to 
+each vessel’s mean score:  
+  `pred_class = 1` if `pred_mean > t`, else `0`  
+- This produces the binary `pred_class`
 
 
-`ml_perf_metrics` computes recall for assessment sets and specificity for 
-holdout non offenders
+### 8. Confidence for each vessel year classification (using `ml_classification`)
 
-  - Two performance metrics are computed:
-    1. recall, for assessment sets (in model versions that did not use them 
-  for training), 
-    2. specificity for holdout non offenders (in the same year of the
-    certification/inspection - if done at the end of the year)
+- The `confidence` value indicates how consistently a vessel’s 
+score falls on the same side of `t` across seeds × bags
+- Computed only when multiple runs exist
+- Values near 1 indicate very stable 
+classification.
+
+
+```{r classif_res_pred_conf}
+
+dplyr::glimpse(classif_res$pred_conf)
+
+```
+
+## Additional steps: Performance and Fairness
+
+
+### 9. Performance: Recall and specificity (using `ml_perf_metrics`)
+
+The performance of the model is evaluated through:
+
+- `recall`: the proportion of positive cases predicted by the model
+as positive
+- `specificity`: if a `prediction_df` has been provided, the
+proportion of  negative cases predicted by the model as negatives
 
 ```{r perf_metrics}
-########### Recall and specificity #################################################
 
 tictoc::tic()
 perf_metrics <- forcedlabor::ml_perf_metrics(data = classif_res$pred_conf)
 tictoc::toc()
 
+print(perf_metrics)
+
+
 ```
+
+
+### 10. Fairness tests
+
+Statistical non-discrimination or fairness measures aim to assess the absence or
+degree of discrimination of given groups regarding classification. 
+
+We evaluated the model’s fairness as its capacity to correctly identify reported 
+positive cases by flag region and fishing gear.
+
+The first example below shows how to assess fairness based on 'flag region'
+
+- The fairness test assesses whether the model is equally successful at 
+classifying offenders as positive (recall) when considering different flag 
+regions
+  - Flags could be a sensitive characteristic, and potentially associated with
+  discrimination
+  - As we did not have enough cases to assess based on each individual Flag 
+  State, we compute and compare fairness for two groups: "Asian" and "Other"
+
+
+```{r fairness_flag}
+
+# Recall by flag_region
+
+region_lookup <- fl_training %>%
+  distinct(indID, flag_region)
+
+classif_res$pred_conf %>%
+  left_join(region_lookup, by = "indID") %>%
+  group_by(flag_region) %>%
+  mutate(
+    known_offender = factor(as.character(known_offender), levels = c("0","1")),
+    pred_class     = factor(as.character(pred_class),     levels = c("0","1"))
+  ) %>%
+  recall(truth = known_offender, 
+         estimate = pred_class, event_level = "second") %>%
+  select(flag_region, .estimate)
+```
+
+
+
+# References
+
+
