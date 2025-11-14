@@ -222,10 +222,10 @@ for the analysis and assessment datasets
 
 ```{r cv_splits}
 
-num_folds <- 5
-num_bags <- 5 
+num_folds <- 5 #5
+num_bags <- 3 #5 
 down_sample_ratio <- 1
-num_common_seeds <- 3 
+num_common_seeds <- 2 #3 
 common_seed_tibble <- tibble::tibble(common_seed =
                                        seq(1:num_common_seeds) * 101)
 
@@ -407,8 +407,19 @@ train_pred_proba <- ml_train_predict(
   free_cores = free_cores,
   prediction_df = NULL
 )
-
 tictoc::toc()
+
+
+ml_train(fl_rec = fl_rec, 
+         rf_spec = rf_spec,
+         cv_splits_all = cv_splits_all,
+         bag_runs = bag_runs,
+         down_sample_ratio = down_sample_ratio,
+         parallel_plan = parallel_plan,
+         free_cores = free_cores,
+         prediction_df = NULL,
+         save_dir = "../models")
+  
 ```
 
 `train_pred_proba` contains the following:
