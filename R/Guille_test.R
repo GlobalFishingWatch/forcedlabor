@@ -253,7 +253,7 @@ ml_train_new <- function(cv_setup,
 
 # GM: testing the functions over the first two bags
 tictoc::tic()
-cv_df<- cv_setup(bag_runs = bag_runs[1:2,],
+cv_df<- cv_setup(bag_runs = bag_runs,
                  cv_splits_all = cv_splits_all,
                  rf_spec = rf_spec)
 train_test <- ml_train_new(cv_setup = cv_df,
@@ -273,7 +273,7 @@ train_pred_proba2 <- ml_train_predict(
   fl_rec = fl_rec,
   rf_spec = rf_spec,
   cv_splits_all = cv_splits_all,
-  bag_runs = bag_runs[1:2,],
+  bag_runs = bag_runs,
   down_sample_ratio = down_sample_ratio,
   parallel_plan = parallel_plan,
   free_cores = free_cores,
