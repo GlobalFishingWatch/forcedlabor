@@ -14,7 +14,7 @@
 #' @importFrom future cluster multicore multisession plan
 #' @importFrom parallel detectCores stopCluster
 #' @importFrom parallelly availableCores makeClusterPSOCK
-#' @importFrom purr map pmap
+#' @importFrom purrr map pmap
 #' @importFrom workflows
 
 dev_ml_train <- function(cv_setup,
