@@ -57,7 +57,6 @@ cv_splits_all <- common_seed_tibble |>
 #},simplify = F)
 #cv_splits_all$test<-test
 
-
 fl_rec <- recipes::recipe(known_offender ~ .,
                           data = fl_training) |>
   recipes::update_role(indID,
@@ -93,182 +92,18 @@ oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 # bag_downsample: get a recipe with downsampling for each bag and corresponding seed (nested within the cv_setup)
 # cv_setup: set ups the workflow and cv folds. Returns cv_workflow, cv_folds, seed and bag (for training the model in ml_train)
 # ml_train: train and predict over the test set. Return each fitted model and the predicted df of scores over the test set
-
-### First function
-bag_downsample<-function(bag_runs,
-                         fl_rec,
-                         down_sample_ratio){
-  bag_runs |>
-    dplyr::mutate(
-      # get a recipe with downsampling for each bag and corresponding seed
-      fl_recipe = purrr::map(.data$recipe_seed, function(x) {
-        fl_rec_down <- fl_rec |>
-          themis::step_downsample(known_offender,
-                                  under_ratio = down_sample_ratio,
-                                  seed = x,
-                                  skip = TRUE)
-      })
-    )
-}
-
-### Next would be the creation of the different CV folds
-cv_setup <- function(bag_runs,
-                     cv_splits_all,
-                     fl_rec,
-                     rf_spec,
-                     down_sample_ratio)
-  {
-
-  down_bags<-bag_downsample(bag_runs = bag_runs,
-                            fl_rec = fl_rec,
-                            down_sample_ratio = down_sample_ratio)
-
-  out<-purrr::pmap(list(down_bags$fl_recipe,
-                        down_bags$common_seed,
-                        down_bags$bag), # previously future_map2, now pmap to map 3 inputs
-                   function(x, y, .bag) # added .data$bag as third mapped input
-                   {
-
-                     # Ensure all bags look the same
-                     set.seed(y)
-
-                     # specifying the workflow with the model, recipe for data and how the
-                     # tuning goes
-                     cv_predictions_workflow <-
-                       workflows::workflow() |>
-                       workflows::add_model(rf_spec) |>
-                       workflows::add_recipe(x)
-
-                     # get the folds related to that common seed, train and predict
-                     cv_predictions <-
-                       cv_splits_all |>
-                       dplyr::filter(.data$common_seed == y) |>
-                       purrr::pluck('cv_splits',1) |> # unlist first (unique) element
-                       dplyr::mutate(# Create analysis dataset based on CV folds
-                         analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
-                         # Create assessment dataset based on CV folds
-                         assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
-                       dplyr::select(-.data$splits)
-
-                     return(
-                       list(
-                         workflow   = cv_predictions_workflow,
-                         cv_folds = cv_predictions,
-                         seed = y,
-                         bag = .bag
-                         )
-                       )
-
-                   })
-
-  return(out)
-}
-
-# Next we train the models:
-ml_train_new <- function(cv_setup,
-                         free_cores,
-                         parallel_plan,
-                         save_dir){
-  # Setting up the parallelization
-  if (parallel_plan == "multicore") {
-    future::plan(future::multicore,
-                 workers = parallel::detectCores() - free_cores, gc = TRUE)
-    # the garbage collector will run automatically (and asynchronously) on the
-    # workers to minimize the memory footprint of the worker.
-  } else if (parallel_plan == "psock") {
-    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
-    future::plan(future::cluster, workers = cl)
-  } else {
-    future::plan(future::multisession,
-                 workers = parallel::detectCores() - free_cores, gc = TRUE)
-  }
-
-  # creating directory
-  if (dir.exists(save_dir) == FALSE){
-    dir.create(save_dir)
-  }
-
-  out <- furrr::future_pmap(
-    list(
-      purrr::map(cv_setup, "workflow"),
-      purrr::map(cv_setup, "seed"),
-      purrr::map(cv_setup, "bag"),
-      purrr::map(cv_setup, "cv_folds")
-    ),
-    function(workflow, seed, bag, folds_tbl){
-
-      # if (!"themis" %in% loadedNamespaces())
-      #   requireNamespace("themis", quietly = TRUE)
-
-      out_2 <- purrr::pmap(
-        list(
-          folds_tbl$analysis,
-          folds_tbl$assessment,
-          folds_tbl$id
-        ),
-        function(ind_anal, ind_assess, fold_id){
-
-          # reproducible within each outer future worker
-          set.seed(seed)
-
-          # fit the model
-          tmp_model <- workflows:::fit.workflow(workflow, ind_anal)
-
-          # save model
-          file_name <- file.path(
-            save_dir,
-            paste0("rf_seed", seed, "_bag", bag, "_", fold_id, ".rds")
-          )
-          saveRDS(tmp_model, file_name)
-
-          tmp_pred_assess <- workflows:::predict.workflow(
-            object = tmp_model,
-            new_data = ind_assess,
-            type = "prob"
-          ) |>
-            dplyr::select(.pred_1) |>
-            dplyr::bind_cols(ind_assess[c("indID","known_offender","known_non_offender")]) |>
-            dplyr::mutate(
-              holdout = 0,
-              common_seed = seed,
-              bag = bag,
-              id = fold_id
-            )
-
-          return(list(
-            model = tmp_model,
-            pred_assess = tmp_pred_assess
-          ))
-        }
-      )
-
-      # return aggregated outputs for this workflow/seed/bag
-      return(list(
-        models = purrr::map(out_2, "model"),
-        pred_assess = dplyr::bind_rows(purrr::map(out_2, "pred_assess"))
-      ))
-    },
-    .options = furrr::furrr_options(seed = TRUE, packages = c("themis"))
-  )
-
-  if (parallel_plan == "psock") {
-    parallel::stopCluster(cl)
-  }
-
-  list(
-    fitted_models = purrr::map(out, "models"),
-    train_probabilities = dplyr::bind_rows(purrr::map(out, "pred_assess"))
-  )
-}
+source("./R/dev_cv_setup.R")
+source("./R/dev_bag_downsample.R")
+source("./R/dev_ml_train.R")
 
 # GM: testing the functions over the first 5 bags (3 seeds)
 tictoc::tic()
-cv_df<- cv_setup(bag_runs = bag_runs,
+cv_df<- dev_cv_setup(bag_runs = bag_runs,
                  cv_splits_all = cv_splits_all,
                  fl_rec = fl_rec,
                  rf_spec = rf_spec,
                  down_sample_ratio = down_sample_ratio)
-train_test <- ml_train_new(cv_setup = cv_df,
+train_test <- dev_ml_train(cv_setup = cv_df,
                            free_cores = free_cores,
                            parallel_plan = parallel_plan,
                            save_dir = "./models/test")
