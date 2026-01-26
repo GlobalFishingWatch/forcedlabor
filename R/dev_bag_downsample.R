@@ -9,11 +9,6 @@
 #' @importFrom dplyr mutate
 #' @importFrom purrr map
 #' @importFrom themis step_downsample
-#'
-#' @export
-#'
-#' @examples
-#'
 
 dev_bag_downsample<-function(bag_runs,
                          fl_rec,

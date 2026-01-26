@@ -12,10 +12,6 @@
 #' @importFrom purrr map pluck
 #' @importFrom themis step_downsample
 #' @importFrom workflows add_model add_recipe workflow
-#'
-#' @export
-#'
-#' @examples
 
 dev_cv_setup <- function(bag_runs,
                      cv_splits_all,
