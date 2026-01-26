@@ -265,7 +265,9 @@ ml_train_new <- function(cv_setup,
 tictoc::tic()
 cv_df<- cv_setup(bag_runs = bag_runs,
                  cv_splits_all = cv_splits_all,
-                 rf_spec = rf_spec)
+                 fl_rec = fl_rec,
+                 rf_spec = rf_spec,
+                 down_sample_ratio = down_sample_ratio)
 train_test <- ml_train_new(cv_setup = cv_df,
                            free_cores = free_cores,
                            parallel_plan = parallel_plan,
