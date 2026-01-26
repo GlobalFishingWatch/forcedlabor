@@ -15,7 +15,7 @@
 #' @importFrom parallel detectCores stopCluster
 #' @importFrom parallelly availableCores makeClusterPSOCK
 #' @importFrom purr map pmap
-#' @importFrom workflows fit predict
+#' @importFrom workflows
 
 dev_ml_train <- function(cv_setup,
                          free_cores,
