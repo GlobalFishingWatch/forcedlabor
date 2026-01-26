@@ -1,15 +1,18 @@
-rm(list = ls())
+# rm(list = ls())
+#
+#
+# # from the using-package Rmd ----------------------------------------------
+#
+# #GM: Difference between both datasets?
+# ddir<-"./data"
+# ddir_raw<-"./data-raw"
+# load(file=file.path(ddir_raw,"fl_training.rda"))
+# dim(new_training_data)
+# load(file=file.path(ddir,"fl_training.rda"))
+# dim(fl_training)
 
-
-# from the using-package Rmd ----------------------------------------------
-
-#GM: Difference between both datasets?
-ddir<-"./data"
-ddir_raw<-"./data-raw"
-load(file=file.path(ddir_raw,"fl_training.rda"))
-dim(new_training_data)
-load(file=file.path(ddir,"fl_training.rda"))
-dim(fl_training)
+# devtools::load_all()
+data("fl_training")
 
 #GM: this seems redundat as the known_non_offender is already a factor str(fl_training)
 fl_training$known_non_offender <- as.factor(fl_training$known_non_offender)
@@ -88,7 +91,7 @@ oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 
 # I have split ml_train_predict in three functions:
 # bag_downsample: get a recipe with downsampling for each bag and corresponding seed (nested within the cv_setup)
-# cv_setup: set ups the workflow and cv folds. Returns cv_workflow, cv_folds, seed and bag (for training the model in mk_train)
+# cv_setup: set ups the workflow and cv folds. Returns cv_workflow, cv_folds, seed and bag (for training the model in ml_train)
 # ml_train: train and predict over the test set. Return each fitted model and the predicted df of scores over the test set
 
 ### First function
@@ -178,6 +181,11 @@ ml_train_new <- function(cv_setup,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }
 
+  # creating directory
+  if (dir.exists(save_dir) == FALSE){
+    dir.create(save_dir)
+  }
+
   out <- furrr::future_pmap(
     list(
       purrr::map(cv_setup, "workflow"),
@@ -187,8 +195,8 @@ ml_train_new <- function(cv_setup,
     ),
     function(workflow, seed, bag, folds_tbl){
 
-      if (!"themis" %in% loadedNamespaces())
-        requireNamespace("themis", quietly = TRUE)
+      # if (!"themis" %in% loadedNamespaces())
+      #   requireNamespace("themis", quietly = TRUE)
 
       out_2 <- purrr::pmap(
         list(
@@ -251,7 +259,7 @@ ml_train_new <- function(cv_setup,
   )
 }
 
-# GM: testing the functions over the first two bags
+# GM: testing the functions over the first 5 bags (3 seeds)
 tictoc::tic()
 cv_df<- cv_setup(bag_runs = bag_runs,
                  cv_splits_all = cv_splits_all,
@@ -260,7 +268,7 @@ train_test <- ml_train_new(cv_setup = cv_df,
                            free_cores = free_cores,
                            parallel_plan = parallel_plan,
                            save_dir = "./models/test")
-tictoc::toc() #6.773 sec elapsed
+tictoc::toc() #6.773 sec elapsed # 250 sec for 5 bags
 
 
 
@@ -306,10 +314,10 @@ lapply(cv_df, function(x){
   sapply(seq_along(x$cv_folds$id), function(y){
     print(paste0(x$seed,"_","bag",x$bag,"_",x$cv_folds$id[y]))
 
-    m <- readRDS(paste0("/Users/gmartin/Documents/git/GFW/forcedlabor/models/test/rf_seed",
+    m <- readRDS(paste0("./models/test/rf_seed",
                         x$seed,"_","bag",x$bag,"_",x$cv_folds$id[y],".rds"))
 
-    m_original <- readRDS(paste0("/Users/gmartin/Documents/git/GFW/forcedlabor/models/rf_seed",
+    m_original <- readRDS(paste0("./models/rf_seed",
                                  x$seed,"_","bag",x$bag,"_",x$cv_folds$id[y],".rds"))
 
     ind_assess<-x$cv_folds$assessment[[y]]
