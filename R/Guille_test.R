@@ -114,7 +114,8 @@ bag_downsample<-function(bag_runs,
 ### Next would be the creation of the different CV folds
 cv_setup <- function(bag_runs,
                      cv_splits_all,
-                     rf_spec)
+                     rf_spec,
+                     down_sample_ratio)
   {
 
   down_bags<-bag_downsample(bag_runs = bag_runs,
