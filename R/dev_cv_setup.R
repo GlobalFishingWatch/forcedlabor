@@ -8,8 +8,8 @@
 #'
 #' @returns List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 #'
-#' @importFrom dplyr filter mutate pluck select
-#' @importFrom purrr map
+#' @importFrom dplyr filter mutate select
+#' @importFrom purrr map pluck
 #' @importFrom themis step_downsample
 #' @importFrom workflows add_model add_recipe workflow
 #'
