@@ -17,7 +17,7 @@
 #'
 #' @examples
 
-cv_setup <- function(bag_runs,
+dev_cv_setup <- function(bag_runs,
                      cv_splits_all,
                      fl_rec,
                      rf_spec,
