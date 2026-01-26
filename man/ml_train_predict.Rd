@@ -12,7 +12,8 @@ ml_train_predict(
   down_sample_ratio,
   parallel_plan = "multicore",
   free_cores = 1,
-  prediction_df = NULL
+  prediction_df = NULL,
+  save_dir = "models"
 )
 }
 \arguments{
