@@ -14,7 +14,7 @@
 # devtools::load_all()
 data("fl_training")
 
-#GM: this seems redundat as the known_non_offender is already a factor str(fl_training)
+#GM: this seems redundant as the known_non_offender is already a factor str(fl_training)
 fl_training$known_non_offender <- as.factor(fl_training$known_non_offender)
 
 #GM: Why this line of code?
@@ -254,8 +254,8 @@ ml_train_new <- function(cv_setup,
   }
 
   list(
-    models = purrr::map(out, "models"),
-    train_pred_proba = dplyr::bind_rows(purrr::map(out, "pred_assess"))
+    fitted_models = purrr::map(out, "models"),
+    train_probabilities = dplyr::bind_rows(purrr::map(out, "pred_assess"))
   )
 }
 
