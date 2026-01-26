@@ -15,7 +15,7 @@
 #' @importFrom parallel detectCores stopCluster
 #' @importFrom parallelly availableCores makeClusterPSOCK
 #' @importFrom purr map pmap
-#' @importFrom workflows fit.workflow predict.workflow
+#' @importFrom workflows fit predict
 #'
 #'
 #' @export
