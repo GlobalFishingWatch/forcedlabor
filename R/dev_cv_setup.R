@@ -1,10 +1,12 @@
-#' Defining cross-validation folds (analysis/assessment) and model workflows across bags.
+#' Defining analysis/assessment splits and model workflows across CV folds and bags.
 #'
 #' @param bag_runs Tibble defining bag numbers and seeds
 #' @param cv_splits_all Cross-validation data splits
-#' @param fl_rec Recipes data recipe
-#' @param rf_spec Random forest model specification
-#' @param down_sample_ratio See under_ratio in ?themis::step_downsample
+#' @param fl_rec Model recipe
+#' @param rf_spec Random forest classifier specifications
+#' @param down_sample_ratio See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
+#' downsampled them in the training set with a 1-1 ratio, i.e. the number of
+#' positive and unlabeled cases used for training would be equal
 #'
 #' @returns List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 #'

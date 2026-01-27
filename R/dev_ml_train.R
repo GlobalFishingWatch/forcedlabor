@@ -1,4 +1,4 @@
-#' Training forced labour random forest model.
+#' Training forced labor random forest model.
 #'
 #' @param cv_setup List containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers. Output from ?cv_setup
 #' @param free_cores Number of available cores. Add more if you need to do many things at the same time
