@@ -47,7 +47,7 @@ Steps 9 and 10 are additional steps for assessing model performance and fairness
 
 ```{r workflow, echo=FALSE, out.width="100%"}
 
-img <- normalizePath(file.path("vignettes", "fig01_model_workflow.png"), mustWork = TRUE)
+img <- normalizePath(file.path("fig01_model_workflow.png"), mustWork = TRUE)
 knitr::include_graphics(img, rel_path = FALSE)
 
 ```
@@ -62,7 +62,7 @@ vessels stay together, rotating the assessment fold per seed.
 3. Fit random forests: for each fold × bag × seed, fit an RF using the 
 recipe/spec, with 1:1 down-sampling applied to the analysis split.
 4. Predicted scores: Collect out-of-fold probabilities `.pred_1` via 
-package function `ml_train_predict()`
+package function `dev_ml_train()`
 5. Predictions from all seeds: pool the `.pred_1` scores across all seeds and 
 bags into `train_pred_proba`
 6. Density-based threshold (DEDPUL): `ml_classification()` function averages 
@@ -211,7 +211,7 @@ train and test.
   - To reduce the weight of the unlabeled cases in the model, we randomly 
   downsampled them in the training set with a 1-1 ratio, i.e. the number of 
   positive and unlabeled cases used for training would be equal
-  - This downsampling ratio is used later by the `ml_train_predict` (Step 4)
+  - This downsampling ratio is used later by the `dev_ml_train` (Step 4)
   but is included here for clarity
 - `num_common_seeds <- 3` sets 3 random seeds 
   - Setting up common seeds to use anywhere that uses random numbers.
@@ -378,47 +378,59 @@ oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 Once the training data has been prepped and the model recipe and specifications
 set, we can now use the package functions to fit models and generate scores. 
 
-### 4. Predicted scores (using `ml_train_predict`)
+### 4. Predicted scores (using `dev_ml_train`)
 
-- `ml_train_predict`: fits a Random Forest for each fold x bag x seed using
+- `dev_ml_train`: fits a Random Forest for each fold x bag x seed using
 the previous recipe and specification steps
 - It applies a downsampling ratio of 1:1 to the training set
 - This step returns `train_pred_proba` a table with probabilities for
 assessment rows 
 
-### 5. Predictions from all seeds (using `ml_train_predict`)
+### 5. Predictions from all seeds (using `dev_ml_train`)
 
-- `ml_train_predict` also pools scores across all seeds and bags
+- `dev_ml_train` also pools scores across all seeds and bags
 
 
 ```{r train_pred_proba}
 
+tictoc::tic()
+cv_df<- dev_cv_setup(bag_runs = bag_runs,
+                 cv_splits_all = cv_splits_all,
+                 fl_rec = fl_rec,
+                 rf_spec = rf_spec,
+                 down_sample_ratio = down_sample_ratio)
+trained_models <- dev_ml_train(cv_setup = cv_df,
+                           free_cores = free_cores,
+                           parallel_plan = parallel_plan,
+                           save_dir = "../models/test")
+train_pred_proba = trained_models$train_probabilities
+tictoc::toc() 
 
 ### training and prediction (scores)
 
-tictoc::tic()
-train_pred_proba <- ml_train_predict(
-  fl_rec = fl_rec,
-  rf_spec = rf_spec,
-  cv_splits_all = cv_splits_all,
-  bag_runs = bag_runs,
-  down_sample_ratio = down_sample_ratio,
-  parallel_plan = parallel_plan,
-  free_cores = free_cores,
-  prediction_df = NULL
-)
-tictoc::toc()
+#tictoc::tic()
+#train_pred_proba <- ml_train_predict(
+#  fl_rec = fl_rec,
+#  rf_spec = rf_spec,
+#  cv_splits_all = cv_splits_all,
+#  bag_runs = bag_runs,
+#  down_sample_ratio = down_sample_ratio,
+#  parallel_plan = parallel_plan,
+#  free_cores = free_cores,
+#  prediction_df = NULL
+#)
+#tictoc::toc()
 
 
-ml_train(fl_rec = fl_rec, 
-         rf_spec = rf_spec,
-         cv_splits_all = cv_splits_all,
-         bag_runs = bag_runs,
-         down_sample_ratio = down_sample_ratio,
-         parallel_plan = parallel_plan,
-         free_cores = free_cores,
-         prediction_df = NULL,
-         save_dir = "../models")
+#ml_train(fl_rec = fl_rec, 
+#         rf_spec = rf_spec,
+#         cv_splits_all = cv_splits_all,
+#         bag_runs = bag_runs,
+#         down_sample_ratio = down_sample_ratio,
+#         parallel_plan = parallel_plan,
+#         free_cores = free_cores,
+#         prediction_df = NULL,
+#         save_dir = "../models")
   
 ```
 
@@ -473,16 +485,16 @@ are within the range
 
 ```{r classif_res, warning=FALSE}
 
-tictoc::tic()
-classif_res <- ml_classification(data = train_pred_proba,
-                                 steps = 1000,
-                                 plotting = FALSE,
-                                 filepath = NULL,
-                                 threshold = seq(0, .99, by = 0.01),
-                                 eps = 0.01,
-                                 parallel_plan = parallel_plan,
-                                 free_cores = free_cores)
-tictoc::toc()
+#tictoc::tic()
+#classif_res <- ml_classification(data = train_pred_proba,
+#                                 steps = 1000,
+#                                 plotting = FALSE,
+#                                 filepath = NULL,
+#                                 threshold = seq(0, .99, by = 0.01),
+#                                 eps = 0.01,
+#                                 parallel_plan = parallel_plan,
+#                                 free_cores = free_cores)
+#tictoc::toc()
 
 
 ```
@@ -507,7 +519,7 @@ classification.
 
 ```{r classif_res_pred_conf}
 
-dplyr::glimpse(classif_res$pred_conf)
+#dplyr::glimpse(classif_res$pred_conf)
 
 ```
 
@@ -525,11 +537,11 @@ proportion of  negative cases predicted by the model as negatives
 
 ```{r perf_metrics}
 
-tictoc::tic()
-perf_metrics <- forcedlabor::ml_perf_metrics(data = classif_res$pred_conf)
-tictoc::toc()
+#tictoc::tic()
+#perf_metrics <- forcedlabor::ml_perf_metrics(data = classif_res$pred_conf)
+#tictoc::toc()
 
-print(perf_metrics)
+#print(perf_metrics)
 
 
 ```
@@ -558,19 +570,19 @@ regions
 
 # Recall by flag_region
 
-region_lookup <- fl_training %>%
-  distinct(indID, flag_region)
+#region_lookup <- fl_training %>%
+#  distinct(indID, flag_region)
 
-classif_res$pred_conf %>%
-  left_join(region_lookup, by = "indID") %>%
-  group_by(flag_region) %>%
-  mutate(
-    known_offender = factor(as.character(known_offender), levels = c("0","1")),
-    pred_class     = factor(as.character(pred_class),     levels = c("0","1"))
-  ) %>%
-  recall(truth = known_offender, 
-         estimate = pred_class, event_level = "second") %>%
-  select(flag_region, .estimate)
+#classif_res$pred_conf %>%
+#  left_join(region_lookup, by = "indID") %>%
+#  group_by(flag_region) %>%
+#  mutate(
+#    known_offender = factor(as.character(known_offender), levels = c("0","1")),
+#    pred_class     = factor(as.character(pred_class),     levels = c("0","1"))
+#  ) %>%
+#  recall(truth = known_offender, 
+#         estimate = pred_class, event_level = "second") %>%
+#  select(flag_region, .estimate)
 ```
 
 
