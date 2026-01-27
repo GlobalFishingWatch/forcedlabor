@@ -9,9 +9,11 @@ dev_bag_downsample(bag_runs, fl_rec, down_sample_ratio)
 \arguments{
 \item{bag_runs}{Tibble defining bag numbers and seeds}
 
-\item{fl_rec}{Recipes data recipe}
+\item{fl_rec}{Model recipe}
 
-\item{down_sample_ratio}{See under_ratio in ?themis::step_downsample}
+\item{down_sample_ratio}{See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
+downsampled them in the training set with a 1-1 ratio, i.e. the number of
+positive and unlabeled cases used for training would be equal}
 }
 \value{
 Tibble with data recipe and downsample ratio.

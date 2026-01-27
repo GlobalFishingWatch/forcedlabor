@@ -2,7 +2,7 @@
 % Please edit documentation in R/dev_cv_setup.R
 \name{dev_cv_setup}
 \alias{dev_cv_setup}
-\title{Defining cross-validation folds (analysis/assessment) and model workflows across bags.}
+\title{Defining analysis/assessment splits and model workflows across CV folds and bags.}
 \usage{
 dev_cv_setup(bag_runs, cv_splits_all, fl_rec, rf_spec, down_sample_ratio)
 }
@@ -11,15 +11,17 @@ dev_cv_setup(bag_runs, cv_splits_all, fl_rec, rf_spec, down_sample_ratio)
 
 \item{cv_splits_all}{Cross-validation data splits}
 
-\item{fl_rec}{Recipes data recipe}
+\item{fl_rec}{Model recipe}
 
-\item{rf_spec}{Random forest model specification}
+\item{rf_spec}{Random forest classifier specifications}
 
-\item{down_sample_ratio}{See under_ratio in ?themis::step_downsample}
+\item{down_sample_ratio}{See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
+downsampled them in the training set with a 1-1 ratio, i.e. the number of
+positive and unlabeled cases used for training would be equal}
 }
 \value{
 List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 }
 \description{
-Defining cross-validation folds (analysis/assessment) and model workflows across bags.
+Defining analysis/assessment splits and model workflows across CV folds and bags.
 }

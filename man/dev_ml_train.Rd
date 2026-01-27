@@ -2,7 +2,7 @@
 % Please edit documentation in R/dev_ml_train.R
 \name{dev_ml_train}
 \alias{dev_ml_train}
-\title{Training forced labour random forest model.}
+\title{Training forced labor random forest model.}
 \usage{
 dev_ml_train(cv_setup, free_cores, parallel_plan, save_dir)
 }
@@ -21,5 +21,5 @@ Trained random forest models
 Tibble with predicted probabilities
 }
 \description{
-Training forced labour random forest model.
+Training forced labor random forest model.
 }
