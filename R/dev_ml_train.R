@@ -79,7 +79,7 @@ dev_ml_train <- function(cv_setup,
             new_data = ind_assess,
             type = "prob"
           ) |>
-            dplyr::select(.pred_1) |>
+            dplyr::select(.data$.pred_1) |>
             dplyr::bind_cols(ind_assess[c("indID","known_offender","known_non_offender")]) |>
             dplyr::mutate(
               holdout = 0,

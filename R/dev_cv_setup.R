@@ -45,13 +45,13 @@ dev_cv_setup <- function(bag_runs,
                      # get the folds related to that common seed, train and predict
                      cv_predictions <-
                        cv_splits_all |>
-                       dplyr::filter(common_seed == y) |>
+                       dplyr::filter(.data$common_seed == y) |>
                        purrr::pluck('cv_splits',1) |> # unlist first (unique) element
                        dplyr::mutate(# Create analysis dataset based on CV folds
-                         analysis = purrr::map(splits, ~rsample::analysis(.x)),
+                         analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
                          # Create assessment dataset based on CV folds
-                         assessment = purrr::map(splits, ~rsample::assessment(.x))) |>
-                       dplyr::select(-splits)
+                         assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
+                       dplyr::select(-.data$splits)
 
                      return(
                        list(
