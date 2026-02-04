@@ -12,7 +12,14 @@
 # dim(fl_training)
 
 # devtools::load_all()
+devtools::install_github("GlobalFishingWatch/forcedlabor@guille-dev")
+library(forcedlabor)
 data("fl_training")
+
+set.seed(101)
+rows_pred <- sample(1:dim(fl_training)[1], size = 1000)
+fl_predict <- fl_training[rows_pred,]
+fl_training <- fl_training[-rows_pred,]
 
 #GM: this seems redundant as the known_non_offender is already a factor str(fl_training)
 fl_training$known_non_offender <- as.factor(fl_training$known_non_offender)
@@ -24,9 +31,9 @@ levels(fl_training$known_non_offender) <-
 
 #GM: Why this is not wrapped in a function?
 num_folds <- 5
-num_bags <- 5
+num_bags <- 2 #5
 down_sample_ratio <- 1
-num_common_seeds <- 3
+num_common_seeds <- 2# 3
 common_seed_tibble <- tibble::tibble(common_seed =
                                        seq(1:num_common_seeds) * 101)
 
@@ -92,9 +99,9 @@ oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 # bag_downsample: get a recipe with downsampling for each bag and corresponding seed (nested within the cv_setup)
 # cv_setup: set ups the workflow and cv folds. Returns cv_workflow, cv_folds, seed and bag (for training the model in ml_train)
 # ml_train: train and predict over the test set. Return each fitted model and the predicted df of scores over the test set
-source("./R/dev_cv_setup.R")
-source("./R/dev_bag_downsample.R")
-source("./R/dev_ml_train.R")
+# source("./R/dev_cv_setup.R")
+# source("./R/dev_bag_downsample.R")
+# source("./R/dev_ml_train.R")
 
 # GM: testing the functions over the first 5 bags (3 seeds)
 tictoc::tic()
@@ -114,7 +121,7 @@ tictoc::toc() #6.773 sec elapsed # 250 sec for 5 bags
 
 # GM: original ml_train_predict function
 # Running it for the first two bags only
-source("./R/ml_train_predict.R")
+# source("./R/ml_train_predict.R")
 tictoc::tic()
 train_pred_proba2 <- ml_train_predict(
   fl_rec = fl_rec,
@@ -124,7 +131,7 @@ train_pred_proba2 <- ml_train_predict(
   down_sample_ratio = down_sample_ratio,
   parallel_plan = parallel_plan,
   free_cores = free_cores,
-  prediction_df = NULL,
+  prediction_df = fl_predict,
   save_dir = "models"
 )
 tictoc::toc()
