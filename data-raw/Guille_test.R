@@ -12,7 +12,7 @@
 # dim(fl_training)
 
 # devtools::load_all()
-devtools::install_github("GlobalFishingWatch/forcedlabor@rocio-add-prediction")
+devtools::install_github("GlobalFishingWatch/forcedlabor@guille-dev")
 library(forcedlabor)
 data("fl_training")
 
