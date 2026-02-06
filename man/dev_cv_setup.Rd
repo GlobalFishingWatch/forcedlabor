@@ -4,7 +4,15 @@
 \alias{dev_cv_setup}
 \title{Defining analysis/assessment splits and model workflows across CV folds and bags.}
 \usage{
-dev_cv_setup(bag_runs, cv_splits_all, fl_rec, rf_spec, down_sample_ratio)
+dev_cv_setup(
+  bag_runs,
+  cv_splits_all,
+  fl_rec,
+  rf_spec,
+  down_sample_ratio,
+  tune_parameters = FALSE,
+  num_grid = 5
+)
 }
 \arguments{
 \item{bag_runs}{Tibble defining bag numbers and seeds}
@@ -18,6 +26,10 @@ dev_cv_setup(bag_runs, cv_splits_all, fl_rec, rf_spec, down_sample_ratio)
 \item{down_sample_ratio}{See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
 downsampled them in the training set with a 1-1 ratio, i.e. the number of
 positive and unlabeled cases used for training would be equal}
+
+\item{tune_parameters}{Boolean defining?}
+
+\item{num_grid}{Number of grid over which to define parameter tuning?}
 }
 \value{
 List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers

@@ -7,13 +7,17 @@
 #' @param down_sample_ratio See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
 #' downsampled them in the training set with a 1-1 ratio, i.e. the number of
 #' positive and unlabeled cases used for training would be equal
+#' @param tune_parameters Boolean defining?
+#' @param num_grid Number of grid over which to define parameter tuning?
 #'
 #' @returns List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 #'
 #' @importFrom dplyr filter mutate select
 #' @importFrom purrr map pluck
 #' @importFrom themis step_downsample
+#' @importFrom tune control_resamples tune_grid
 #' @importFrom workflows add_model add_recipe workflow
+#' @importFrom yardstick metric_set roc_auc
 #'
 #' @export
 
@@ -21,7 +25,9 @@ dev_cv_setup <- function(bag_runs,
                      cv_splits_all,
                      fl_rec,
                      rf_spec,
-                     down_sample_ratio)
+                     down_sample_ratio,
+                     tune_parameters = FALSE,
+                     num_grid = 5)
 {
 
   down_bags<-dev_bag_downsample(bag_runs = bag_runs,
@@ -37,33 +43,64 @@ dev_cv_setup <- function(bag_runs,
                      # Ensure all bags look the same
                      set.seed(y)
 
-                     # specifying the workflow with the model, recipe for data and how the
-                     # tuning goes
-                     cv_predictions_workflow <-
-                       workflows::workflow() |>
-                       workflows::add_model(rf_spec) |>
-                       workflows::add_recipe(x)
+                     if(tune_parameters){
 
-                     # get the folds related to that common seed, train and predict
-                     cv_predictions <-
-                       cv_splits_all |>
-                       dplyr::filter(.data$common_seed == y) |>
-                       purrr::pluck('cv_splits',1) |> # unlist first (unique) element
-                       dplyr::mutate(# Create analysis dataset based on CV folds
-                         analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
-                         # Create assessment dataset based on CV folds
-                         assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
-                       dplyr::select(-.data$splits)
+                       cv_splits <- cv_splits_all |>
+                         dplyr::filter(.data$common_seed == y) |>
+                         purrr::pluck('cv_splits')  |>
+                         purrr::pluck(1) # unlist first (unique) element
+                       # specifying the workflow with the model, recipe for data and how the
+                       # tuning goes
 
-                     return(
-                       list(
-                         workflow   = cv_predictions_workflow,
-                         cv_folds = cv_predictions,
-                         seed = y,
-                         bag = .bag
+                       cv_predictions <- workflows::workflow() |>
+                         workflows::add_model(rf_spec) |>
+                         workflows::add_recipe(x) |>
+                         tune::tune_grid(resamples = cv_splits,
+                                         # Automatically creates hyperparameter grid
+                                         # using a space-filling design (via a Latin hypercube)
+                                         grid = num_grid,
+                                         # Need to specify a metric to calculate, even though we
+                                         # won't use it for anything
+                                         # Doing ROC means that the predictions this outputs will be
+                                         # the raw numeric, rather than class
+                                         metrics = yardstick::metric_set(yardstick::roc_auc),
+                                         control = tune::control_resamples(save_pred = TRUE)) |>
+                         dplyr::select(id, .data$.predictions) |>
+                         tidyr::unnest(.data$.predictions) |>
+                         dplyr::select(-.data$.pred_0, -.data$.config)
+
+                       return(
+                         cv_predictions
                        )
-                     )
 
+                     } else {
+                       # specifying the workflow with the model, recipe for data and how the
+                       # tuning goes
+                       cv_predictions_workflow <-
+                         workflows::workflow() |>
+                         workflows::add_model(rf_spec) |>
+                         workflows::add_recipe(x)
+
+                       # get the folds related to that common seed, train and predict
+                       cv_predictions <-
+                         cv_splits_all |>
+                         dplyr::filter(.data$common_seed == y) |>
+                         purrr::pluck('cv_splits',1) |> # unlist first (unique) element
+                         dplyr::mutate(# Create analysis dataset based on CV folds
+                           analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
+                           # Create assessment dataset based on CV folds
+                           assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
+                         dplyr::select(-.data$splits)
+
+                       return(
+                         list(
+                           workflow   = cv_predictions_workflow,
+                           cv_folds = cv_predictions,
+                           seed = y,
+                           bag = .bag
+                         )
+                       )
+                     }
                    })
 
   return(out)
