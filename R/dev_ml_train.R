@@ -106,7 +106,7 @@ dev_ml_train <- function(cv_setup,
             bag = bag,
             fold_id = fold_id,
             file_path = file_path,
-            saved = !is.null(save_dir),
+            saved_to_disk = !is.null(save_dir),
             model_object = list(tmp_model)
           )
 
@@ -118,8 +118,9 @@ dev_ml_train <- function(cv_setup,
       )
 
       # return aggregated outputs for this workflow/seed/bag
+      # Binding models from the same seed/bag combination
       return(list(
-        models = purrr::map(out_2, "model"),
+        models = dplyr::bind_rows(purrr::map(out_2, "model")),
         pred_assess = dplyr::bind_rows(purrr::map(out_2, "pred_assess"))
       ))
     },
@@ -130,7 +131,6 @@ dev_ml_train <- function(cv_setup,
     parallel::stopCluster(cl)
   }
 
-  #GM: currently saving as list objects, would you prefer models to be stored in a tibble?
   list(
     fitted_models = purrr::map(out, "models"),
     train_probabilities = dplyr::bind_rows(purrr::map(out, "pred_assess"))
