@@ -3,7 +3,7 @@
 #' @param cv_setup List containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers. Output from ?cv_setup
 #' @param free_cores Number of available cores. Add more if you need to do many things at the same time
 #' @param parallel_plan Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)
-#' @param save_dir Directory to save trained models
+#' @param save_dir Directory to save trained models otherwise skip saving when NULL
 #'
 #' @returns List containing:
 #' Trained random forest models
@@ -23,7 +23,7 @@
 dev_ml_train <- function(cv_setup,
                          free_cores,
                          parallel_plan,
-                         save_dir){
+                         save_dir=NULL){
 
   # Setting up the parallelization
   if (parallel_plan == "multicore") {
@@ -39,10 +39,14 @@ dev_ml_train <- function(cv_setup,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }
 
-  # creating directory
-  if (dir.exists(save_dir) == FALSE){
-    dir.create(save_dir)
-  }
+  # creating directory if provided
+  if (!is.null(save_dir)) {
+    if (dir.exists(save_dir) == FALSE){
+      dir.create(save_dir)
+      }
+  } else{
+      print("Skipping model saving")
+    }
 
   out <- furrr::future_pmap(
     list(
@@ -75,7 +79,10 @@ dev_ml_train <- function(cv_setup,
             save_dir,
             paste0("rf_seed", seed, "_bag", bag, "_", fold_id, ".rds")
           )
-          saveRDS(tmp_model, file_name)
+
+          if(!is.null(save_dir)) {
+            saveRDS(tmp_model, file_name)
+          }
 
           tmp_pred_assess <- workflows:::predict.workflow(
             object = tmp_model,
