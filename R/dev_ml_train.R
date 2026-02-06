@@ -74,14 +74,16 @@ dev_ml_train <- function(cv_setup,
           # fit the model
           tmp_model <- workflows:::fit.workflow(workflow, ind_anal)
 
-          # save model
-          file_name <- file.path(
-            save_dir,
-            paste0("rf_seed", seed, "_bag", bag, "_", fold_id, ".rds")
-          )
+          # model_id (for loading) and file path
+          model_id <- paste0("rf_seed", seed, "_bag", bag, "_", fold_id)
+          file_path <- if (!is.null(save_dir)) {
+            file.path(save_dir, paste0(model_id, ".rds"))
+          } else {
+            NA_character_
+          }
 
           if(!is.null(save_dir)) {
-            saveRDS(tmp_model, file_name)
+            saveRDS(tmp_model, file_path)
           }
 
           tmp_pred_assess <- workflows:::predict.workflow(
@@ -98,8 +100,18 @@ dev_ml_train <- function(cv_setup,
               id = fold_id
             )
 
+          model_info = tibble::tibble(
+            model_id = model_id,
+            seed = seed,
+            bag = bag,
+            fold_id = fold_id,
+            file_path = file_path,
+            saved = !is.null(save_dir),
+            model_object = list(tmp_model)
+          )
+
           return(list(
-            model = tmp_model,
+            model = model_info,
             pred_assess = tmp_pred_assess
           ))
         }
