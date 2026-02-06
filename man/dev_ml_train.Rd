@@ -4,7 +4,7 @@
 \alias{dev_ml_train}
 \title{Training forced labor random forest model.}
 \usage{
-dev_ml_train(cv_setup, free_cores, parallel_plan, save_dir)
+dev_ml_train(cv_setup, free_cores, parallel_plan, save_dir = NULL)
 }
 \arguments{
 \item{cv_setup}{List containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers. Output from ?cv_setup}
@@ -13,7 +13,7 @@ dev_ml_train(cv_setup, free_cores, parallel_plan, save_dir)
 
 \item{parallel_plan}{Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)}
 
-\item{save_dir}{Directory to save trained models}
+\item{save_dir}{Directory to save trained models otherwise skip saving when NULL}
 }
 \value{
 List containing:
