@@ -24,6 +24,7 @@ Imports:
     rsample,
     stats,
     themis,
+    tibble,
     tidyselect,
     tidyr,
     tune,
@@ -34,9 +35,7 @@ Suggests:
     knitr,
     parsnip,
     ranger,
-    recipes,
     rmarkdown,
-    tibble,
     tictoc
 URL: https://github.com/GlobalFishingWatch/forcedlabor
 BugReports: https://github.com/GlobalFishingWatch/forcedlabor/issues
