@@ -1,7 +1,7 @@
 #' Predicting over new data using previously trained RF models
 #'
 #' @param trained_models List of RF models (as returned by dev_ml_train; dev_ml_load)
-#' @param new_datam New data over which to apply trained models to generate predictions
+#' @param new_data New data over which to apply trained models to generate predictions
 #' @param free_cores Number of available cores. Add more if you need to do many things at the same time
 #' @param parallel_plan Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)
 #'
