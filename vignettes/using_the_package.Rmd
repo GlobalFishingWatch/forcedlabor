@@ -226,27 +226,6 @@ num_folds <- 5 #5
 num_bags <- 3 #5 
 down_sample_ratio <- 1
 num_common_seeds <- 2 #3 
-common_seed_tibble <- tibble::tibble(common_seed =
-                                       seq(1:num_common_seeds) * 101)
-
-
-# Run all common_seeds
-bag_runs <- common_seed_tibble |>
-  tidyr::crossing(tibble::tibble(bag = seq(num_bags))) |>
-  dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) |>
-  dplyr::mutate(counter = dplyr::row_number())
-
-## Cross Validation 
-# Ensure there is no splitting across source_id across analysis and assessment
-# data sets.  Need to make separate splits for each seed.
-cv_splits_all <- common_seed_tibble |>
-  dplyr::mutate(cv_splits = purrr::map(common_seed, function(x) {
-    set.seed(x)
-    rsample::group_vfold_cv(fl_training,
-                            group = source_id_number,
-                            v = num_folds)
-  }))
-
 ```
 
 
@@ -394,15 +373,19 @@ assessment rows
 ```{r train_pred_proba}
 
 tictoc::tic()
-cv_df<- dev_cv_setup(bag_runs = bag_runs,
-                 cv_splits_all = cv_splits_all,
-                 fl_rec = fl_rec,
-                 rf_spec = rf_spec,
-                 down_sample_ratio = down_sample_ratio)
+cv_df<- dev_cv_setup(training_data = fl_training,
+                       num_folds = num_folds,
+                       num_bags = num_bags,
+                       num_seeds = down_sample_ratio,
+                       fl_rec = fl_rec,
+                       rf_spec = rf_spec,
+                       down_sample_ratio = down_sample_ratio,
+                       tune_parameters = FALSE,
+                       num_grid = 5)
 trained_models <- dev_ml_train(cv_setup = cv_df,
                            free_cores = free_cores,
                            parallel_plan = parallel_plan,
-                           save_dir = "../models/test")
+                           save_dir = NULL)#"../models/test")
 train_pred_proba = trained_models$train_probabilities
 tictoc::toc() 
 
