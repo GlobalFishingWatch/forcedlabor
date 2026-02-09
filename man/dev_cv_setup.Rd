@@ -2,11 +2,15 @@
 % Please edit documentation in R/dev_cv_setup.R
 \name{dev_cv_setup}
 \alias{dev_cv_setup}
-\title{Defining analysis/assessment splits and model workflows across CV folds and bags.}
+\title{Setting up the data structure to train the RF model based on a number of folds, bags and common seeds.
+If tune_parameters is provided  return..., otherwise return analysis/assessment splits and model workflows
+across CV folds and bags.}
 \usage{
 dev_cv_setup(
-  bag_runs,
-  cv_splits_all,
+  training_data,
+  num_folds,
+  num_bags,
+  num_seeds,
   fl_rec,
   rf_spec,
   down_sample_ratio,
@@ -15,9 +19,13 @@ dev_cv_setup(
 )
 }
 \arguments{
-\item{bag_runs}{Tibble defining bag numbers and seeds}
+\item{training_data}{Dataset over which to generate CV folds and tuning grid}
 
-\item{cv_splits_all}{Cross-validation data splits}
+\item{num_folds}{Number of cross validation folds}
+
+\item{num_bags}{Number of bags}
+
+\item{num_seeds}{Number of common seeds}
 
 \item{fl_rec}{Model recipe}
 
@@ -35,5 +43,7 @@ positive and unlabeled cases used for training would be equal}
 List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 }
 \description{
-Defining analysis/assessment splits and model workflows across CV folds and bags.
+Setting up the data structure to train the RF model based on a number of folds, bags and common seeds.
+If tune_parameters is provided  return..., otherwise return analysis/assessment splits and model workflows
+across CV folds and bags.
 }

@@ -28,7 +28,7 @@
 #'
 #' @export
 
-dev_cv_setup2 <- function(training_data,
+dev_cv_setup <- function(training_data,
                           num_folds,
                           num_bags,
                           num_seeds,
@@ -65,6 +65,21 @@ dev_cv_setup2 <- function(training_data,
                               v = num_folds)
     }))
 
+  if(tune_parameters && is.null(num_grid)){
+
+    stop("num_grid must be provided when tune_parameters = TRUE")
+
+  } else if (tune_parameters && !is.null(num_grid)) {
+    # GM: I am not sure what the tune::tune_grid is doing
+
+    message("Performing parameter tuning with ", num_grid, " grid points")
+
+  } else if (!tune_parameters) {
+
+    message("Generating analysis/asessment datasets across folds")
+
+  }
+
   out<-purrr::pmap(list(down_bags$fl_recipe,
                         down_bags$common_seed,
                         down_bags$bag), # previously future_map2, now pmap to map 3 inputs
@@ -74,14 +89,8 @@ dev_cv_setup2 <- function(training_data,
                      # Ensure all bags look the same
                      set.seed(y)
 
-                     if(tune_parameters && is.null(num_grid)){
-
-                       stop("num_grid must be provided when tune_parameters = TRUE")
-
-                     } else if (tune_parameters && !is.null(num_grid)) {
+                     if (tune_parameters && !is.null(num_grid)) {
                        # GM: I am not sure what the tune::tune_grid is doing
-
-                       message("Performing parameter tuning with ", num_grid, " grid points")
 
                        cv_splits <- cv_splits_all |>
                          dplyr::filter(.data$common_seed == y) |>
