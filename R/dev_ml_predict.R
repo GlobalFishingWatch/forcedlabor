@@ -43,9 +43,11 @@ dev_ml_predict <- function(trained_models,
   predictions <- purrr::pmap_dfr(
     list(
       all_models$model_id,
-      all_models$model_object
+      all_models$model_object,
+      all_models$seed,
+      all_models$bag
     ),
-    function(model_id,model_object) {
+    function(model_id,model_object,seed,.bag) {
 
       # Predict over new data
       tmp_pred <-
@@ -57,8 +59,9 @@ dev_ml_predict <- function(trained_models,
         # (might be a warning about levels in source_id but it's not important,
         # we won't use that column anyway)
         dplyr::bind_cols(new_data[c("indID", "known_offender", "known_non_offender")]) |>
-        dplyr::mutate(holdout = 1)
-
+        dplyr::mutate(holdout = 1,
+                      common_seed = seed,
+                      bag = .bag)
       return(tmp_pred)
 
     }
