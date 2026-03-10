@@ -126,7 +126,7 @@ dev_cv_setup <- function(training_data,
                        # tuning goes
                        cv_predictions_workflow <-
                          workflows::workflow() |>
-                         workflows::add_model(rf_spec) |>
+                         workflows::add_model(rf_spec) |> #GM: is this necessary here, or could be included later in dev_ml_train once hyperparameters defined?
                          workflows::add_recipe(x)
 
                        # get the folds related to that common seed, train and predict
