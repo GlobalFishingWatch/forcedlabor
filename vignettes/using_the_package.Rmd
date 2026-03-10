@@ -440,7 +440,20 @@ dplyr::glimpse(train_pred_proba)
 
 ```
 
-### 6. Density-based algorithm for classification threshold (using `ml_classification`)
+### 6. Loading model and predicting over new data 
+
+Previously trained models can be loaded from your local disk using `dev_ml_load` based on your cross-validation setup (output of `dev_cv_setup`) and used to predict over new datasets using `dev_ml_predict`. 
+
+```{r}
+loaded_models <- dev_ml_load(cv_setup = cv_df,
+                             save_dir = "./models")
+#predictions = dev_ml_predict(trained_models = loaded_models,
+#                             new_data = fl_predict,
+#                             free_cores = free_cores,
+#                             parallel_plan = parallel_plan)
+```
+
+### 7. Density-based algorithm for classification threshold (using `ml_classification`)
 
 `ml_classification` aggregates `.pred_1` per `indID` to `pred_mean`, 
 estimates α (upper bound on positives in the unlabeled set), 
@@ -483,7 +496,7 @@ are within the range
 ```
 
 
-### 7. Classification (using `ml_classification`)
+### 8. Classification (using `ml_classification`)
 
 - Within `ml_classification` we apply the calibrated threshold `t` to 
 each vessel’s mean score:  
@@ -491,7 +504,7 @@ each vessel’s mean score:
 - This produces the binary `pred_class`
 
 
-### 8. Confidence for each vessel year classification (using `ml_classification`)
+### 9. Confidence for each vessel year classification (using `ml_classification`)
 
 - The `confidence` value indicates how consistently a vessel’s 
 score falls on the same side of `t` across seeds × bags
@@ -509,7 +522,7 @@ classification.
 ## Additional steps: Performance and Fairness
 
 
-### 9. Performance: Recall and specificity (using `ml_perf_metrics`)
+### 10. Performance: Recall and specificity (using `ml_perf_metrics`)
 
 The performance of the model is evaluated through:
 
@@ -530,7 +543,7 @@ proportion of  negative cases predicted by the model as negatives
 ```
 
 
-### 10. Fairness tests
+### 11. Fairness tests
 
 Statistical non-discrimination or fairness measures aim to assess the absence or
 degree of discrimination of given groups regarding classification. 
