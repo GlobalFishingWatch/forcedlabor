@@ -445,8 +445,8 @@ dplyr::glimpse(train_pred_proba)
 Previously trained models can be loaded from your local disk using `dev_ml_load` based on your cross-validation setup (output of `dev_cv_setup`) and used to predict over new datasets using `dev_ml_predict`. 
 
 ```{r}
-loaded_models <- dev_ml_load(cv_setup = cv_df,
-                             save_dir = "../models/test")
+#loaded_models <- dev_ml_load(cv_setup = cv_df,
+#                             save_dir = system.file("models/test", package = "forcedlabor"))
 #predictions = dev_ml_predict(trained_models = loaded_models,
 #                             new_data = fl_predict,
 #                             free_cores = free_cores,
