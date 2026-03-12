@@ -21,6 +21,7 @@ Imports:
     parallelly,
     purrr,
     recipes,
+    rlang,
     rsample,
     stats,
     themis,
