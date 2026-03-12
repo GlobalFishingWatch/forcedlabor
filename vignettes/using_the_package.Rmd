@@ -223,7 +223,7 @@ for the analysis and assessment datasets
 ```{r cv_splits}
 
 num_folds <- 5 #5
-num_bags <- 3 #5 
+num_bags <- 2 #5 
 down_sample_ratio <- 1
 num_common_seeds <- 2 #3 
 ```
@@ -446,7 +446,7 @@ Previously trained models can be loaded from your local disk using `dev_ml_load`
 
 ```{r}
 loaded_models <- dev_ml_load(cv_setup = cv_df,
-                             save_dir = "././models/test")
+                             save_dir = "../models/test")
 #predictions = dev_ml_predict(trained_models = loaded_models,
 #                             new_data = fl_predict,
 #                             free_cores = free_cores,
