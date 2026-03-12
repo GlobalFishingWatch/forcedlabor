@@ -3,7 +3,7 @@
 \name{dev_cv_setup}
 \alias{dev_cv_setup}
 \title{Setting up the data structure to train the RF model based on a number of folds, bags and common seeds.
-If tune_parameters is provided  return..., otherwise return analysis/assessment splits and model workflows
+If tune is set to TRUE, is provided  return..., otherwise return analysis/assessment splits and model workflows
 across CV folds and bags.}
 \usage{
 dev_cv_setup(
@@ -14,8 +14,9 @@ dev_cv_setup(
   fl_rec,
   rf_spec,
   down_sample_ratio,
-  tune_parameters = FALSE,
-  num_grid = 5
+  tune = FALSE,
+  tune_parameters = NULL,
+  grid = NULL
 )
 }
 \arguments{
@@ -35,15 +36,17 @@ dev_cv_setup(
 downsampled them in the training set with a 1-1 ratio, i.e. the number of
 positive and unlabeled cases used for training would be equal}
 
-\item{tune_parameters}{Boolean defining?}
+\item{tune}{Boolean defining wether to perform hyperparameter tuning in rf_spec}
 
-\item{num_grid}{Number of grid over which to define parameter tuning?}
+\item{tune_parameters}{String defining parameter (or parameters) over which to perform tuning. Default to NULL which perform tuning across all hyperparameters in rf_spec}
+
+\item{grid}{Grid defining hyperparameters values in rf_spec over which to perform tuning. Must contain the same parameters specified in tune_parameters}
 }
 \value{
 List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 }
 \description{
 Setting up the data structure to train the RF model based on a number of folds, bags and common seeds.
-If tune_parameters is provided  return..., otherwise return analysis/assessment splits and model workflows
+If tune is set to TRUE, is provided  return..., otherwise return analysis/assessment splits and model workflows
 across CV folds and bags.
 }
