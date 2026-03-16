@@ -13,10 +13,7 @@ dev_cv_setup(
   num_seeds,
   fl_rec,
   rf_spec,
-  down_sample_ratio,
-  tune = FALSE,
-  tune_parameters = NULL,
-  grid = NULL
+  down_sample_ratio
 )
 }
 \arguments{
@@ -35,12 +32,6 @@ dev_cv_setup(
 \item{down_sample_ratio}{See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
 downsampled them in the training set with a 1-1 ratio, i.e. the number of
 positive and unlabeled cases used for training would be equal}
-
-\item{tune}{Boolean defining wether to perform hyperparameter tuning in rf_spec}
-
-\item{tune_parameters}{String defining parameter (or parameters) over which to perform tuning. Default to NULL which perform tuning across all hyperparameters in rf_spec}
-
-\item{grid}{Grid defining hyperparameters values in rf_spec over which to perform tuning. Must contain the same parameters specified in tune_parameters}
 }
 \value{
 List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers

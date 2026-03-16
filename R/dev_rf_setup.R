@@ -3,9 +3,9 @@
 #' @param training_data A tibble with training data
 #' @param y Character, name of the response variable. Defaults to `"known_offender"`
 #' @param x Vector with names of the features to be used. Defaults to NULL and should be set accordingly to avoid adding new features without knowing
-#' @param id
+#' @param id ID variable name
 #' @param dont_use Exclude a given variable (or variables) as predictors
-#' @param control
+#' @param control Control variable column
 #' @param corr_threshold A value for the threshold of absolute correlation values. The step will try to remove the
 #' minimum number of columns so that all the resulting absolute correlations are less than this value. See ?recipes::step_corr for further information
 #' @param rf_trees Number of trees contained in the ensemble. The larger the number of trees,
