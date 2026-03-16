@@ -155,6 +155,7 @@ classif_res$pred_conf %>%
          estimate = pred_class, event_level = "second") %>%
   select(flag_region, .estimate)
 
+
 #----- Oringal functions to test results are consistent
 
 fl_rec <- recipes::recipe(known_offender ~ .,
