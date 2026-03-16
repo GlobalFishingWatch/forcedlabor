@@ -18,7 +18,7 @@
 dev_ml_hyperpar <- function(data) {
 
   roc_auc_results <- data |>
-    dplyr::mutate(counter = as.integer(factor(paste(bag, common_seed)))) |>
+    dplyr::mutate(counter = as.integer(factor(paste(.data$bag, .data$common_seed)))) |>
     dplyr::group_by(dplyr::across(-c(.data$.pred_1, .data$bag,
                                      .data$known_offender, .data$.row, .data$counter))) |>
     yardstick::roc_auc(truth = .data$known_offender,

@@ -5,7 +5,7 @@
 \title{Setting up the model recipe and random forest specification}
 \usage{
 dev_rf_setup(
-  training_data = fl_training,
+  training_data,
   y = "known_offender",
   x = NULL,
   id = "indID",

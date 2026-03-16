@@ -23,7 +23,7 @@
 #'
 #' @export
 
-dev_rf_setup <- function(training_data = fl_training,
+dev_rf_setup <- function(training_data,
                          y = "known_offender", #response
                          x = NULL,
                          id = "indID",
