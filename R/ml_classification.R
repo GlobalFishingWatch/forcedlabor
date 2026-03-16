@@ -14,6 +14,7 @@
 #' @param threshold potential thresholds to test
 #' @param eps accepted difference (tolerance) between alpha and the actual
 #' proportion of positives for a given threshold
+#' @param confidence_level Boolean defining wether or not to compute confidence levels
 #' @param parallel_plan type of parallelization to run (multicore, multisession,
 #' or psock - this last one may need calling libraries inside)
 #' @param free_cores number of free cores to leave out of parallelization
@@ -46,6 +47,7 @@ ml_classification <- function(data,
                               filepath = NULL,
                               threshold = seq(0, .99, by = 0.01),
                               eps = 0.01,
+                              confidence_levels = TRUE,
                               parallel_plan = "multicore",
                               free_cores = 1) {
 
@@ -120,59 +122,63 @@ ml_classification <- function(data,
                                                threshold_res$thres_star, function(x, y) {
                                                  ifelse(x > y, 1, 0)}))
 
-  if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2) {
+  if (confidence_levels) {
 
-    confidence_list <- predclass_df |>
-      split(predclass_df$indID) |>
-      parallel::mclapply(FUN = conf_estimate, data = data,
-                         threshold = threshold_res$thres_star,
-                         mc.cores = parallel::detectCores() - free_cores)
+    if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2) {
 
-    count_null <- sum(lengths(confidence_list) == 0)
+      confidence_list <- predclass_df |>
+        split(predclass_df$indID) |>
+        parallel::mclapply(FUN = conf_estimate, data = data,
+                           threshold = threshold_res$thres_star,
+                           mc.cores = parallel::detectCores() - free_cores)
 
-    if (count_null > 0){
-      print(paste0("nulls: ", count_null))
-      confidence_list <- confidence_list[lengths(confidence_list) != 0]
+      count_null <- sum(lengths(confidence_list) == 0)
+
+      if (count_null > 0){
+        print(paste0("nulls: ", count_null))
+        confidence_list <- confidence_list[lengths(confidence_list) != 0]
+      }
+
+      confidence_vector <- t(do.call(cbind.data.frame, confidence_list))
+      confidence_df <- data.frame(indID = rownames(confidence_vector),
+                                  conf = confidence_vector)
+
+      predclass_df <- dplyr::left_join(predclass_df, confidence_df, by = dplyr::join_by(indID))
+      #
+      #
+      #
+      #     Dataframe with a nullfile - list
+      #
+      #     Broken split
+      #
+      #     titi <- t( do.call(
+      #       cbind.data.frame, confidence))
+      #
+      #       #
+      #       #
+      #     confidence <-  t( do.call(
+      #       cbind.data.frame, parallel::mclapply( split(predclass_df, predclass_df$indID),
+      #               FUN = conf_estimate, data = data,
+      #               threshold = threshold_res$thres_star,
+      #               mc.cores = parallel::detectCores() - free_cores)))
+      #
+      #     # quitar nulos a una lista
+      #     # t y cbind.data.frame
+      #     # left join, reemplazando con NAs
+
+
+
+      # predclass_df$conf <- c(confidence)
+
+
+
+    } else {
+      message('Not enough data to compute confidence levels')
+
     }
-
-    confidence_vector <- t(do.call(cbind.data.frame, confidence_list))
-    confidence_df <- data.frame(indID = rownames(confidence_vector),
-                                conf = confidence_vector)
-
-    predclass_df <- dplyr::left_join(predclass_df, confidence_df, by = dplyr::join_by(indID))
-    #
-    #
-    #
-    #     Dataframe with a nullfile - list
-    #
-    #     Broken split
-    #
-    #     titi <- t( do.call(
-    #       cbind.data.frame, confidence))
-    #
-    #       #
-    #       #
-    #     confidence <-  t( do.call(
-    #       cbind.data.frame, parallel::mclapply( split(predclass_df, predclass_df$indID),
-    #               FUN = conf_estimate, data = data,
-    #               threshold = threshold_res$thres_star,
-    #               mc.cores = parallel::detectCores() - free_cores)))
-    #
-    #     # quitar nulos a una lista
-    #     # t y cbind.data.frame
-    #     # left join, reemplazando con NAs
-
-
-
-    # predclass_df$conf <- c(confidence)
-
-
-
   } else {
-    print('not enough data to compute confidence levels')
-
-  }
-
+    message("Skipped confidence level estimation")
+    }
 
   return(list(pred_conf = predclass_df,
               alpha = threshold_res$alpha,
