@@ -2,7 +2,7 @@
 #'
 #' @param training_data Dataset over which tune model hyperparameters
 #' @param fl_rec Model recipe
-#' @param rf_setup Random forest classifier specifications
+#' @param rf_spec Random forest classifier specifications
 #' @param num_folds Number of cross validation folds
 #' @param num_bags Number of bags
 #' @param num_seeds Number of common seeds

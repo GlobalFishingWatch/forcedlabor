@@ -14,7 +14,7 @@
 #' @param threshold potential thresholds to test
 #' @param eps accepted difference (tolerance) between alpha and the actual
 #' proportion of positives for a given threshold
-#' @param confidence_level Boolean defining wether or not to compute confidence levels
+#' @param confidence_levels Boolean to compute confidence levels
 #' @param parallel_plan type of parallelization to run (multicore, multisession,
 #' or psock - this last one may need calling libraries inside)
 #' @param free_cores number of free cores to leave out of parallelization

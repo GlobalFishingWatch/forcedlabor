@@ -4,10 +4,10 @@
 \alias{dev_ml_hyperpar}
 \title{Get best hyperparameter combination for each common seed after ML training}
 \usage{
-dev_ml_hyperpar(cv_df)
+dev_ml_hyperpar(data)
 }
 \arguments{
-\item{train_pred_proba}{data frame of train cross-validated datasets with
+\item{data}{data frame of train cross-validated datasets with
 several bags, it must have columns:
 .pred_1 : probability of being an offender;
 bag: bag ID;

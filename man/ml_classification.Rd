@@ -33,12 +33,12 @@ needed}
 \item{eps}{accepted difference (tolerance) between alpha and the actual
 proportion of positives for a given threshold}
 
+\item{confidence_levels}{Boolean to compute confidence levels}
+
 \item{parallel_plan}{type of parallelization to run (multicore, multisession,
 or psock - this last one may need calling libraries inside)}
 
 \item{free_cores}{number of free cores to leave out of parallelization}
-
-\item{confidence_level}{Boolean defining wether or not to compute confidence levels}
 }
 \value{
 tibble with classification and calibrated threshold used for them

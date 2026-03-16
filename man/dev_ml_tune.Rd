@@ -23,6 +23,8 @@ dev_ml_tune(
 
 \item{fl_rec}{Model recipe}
 
+\item{rf_spec}{Random forest classifier specifications}
+
 \item{num_folds}{Number of cross validation folds}
 
 \item{num_bags}{Number of bags}
@@ -41,8 +43,6 @@ positive and unlabeled cases used for training would be equal}
 or psock - this last one may need calling libraries inside)}
 
 \item{free_cores}{number of free cores to leave out of parallelization}
-
-\item{rf_setup}{Random forest classifier specifications}
 }
 \value{
 Data frame of train cross-validated datasets
