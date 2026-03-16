@@ -19,6 +19,7 @@ Imports:
     KernSmooth,
     parallel,
     parallelly,
+    parsnip,
     purrr,
     recipes,
     rlang,
@@ -34,7 +35,6 @@ Imports:
 Suggests:
     devtools,
     knitr,
-    parsnip,
     ranger,
     rmarkdown,
     tictoc
