@@ -65,6 +65,7 @@ grill <- expand.grid(
   regularization.factor = seq(0.25, 1, by = 0.25) # 0.9
 )
 
+tictoc::tic()
 tune_test<-dev_ml_tune(training_data = fl_training,
                        fl_rec = rf_setup$rf_recipe,
                        rf_spec = rf_setup$rf_spec,
@@ -75,6 +76,7 @@ tune_test<-dev_ml_tune(training_data = fl_training,
                        grid = grill,
                        parallel_plan = parallel_plan,
                        free_cores = free_cores)
+tictoc::toc() #165.266 sec elapsed
 hyper_pars<-dev_ml_hyperpar(tune_test)
 
 # I have split ml_train_predict in three functions:
@@ -137,7 +139,7 @@ classif_res <- ml_classification(data = train_test$train_probabilities,
 tictoc::toc()
 
 source("./R/ml_perf_metrics.R")
-perf_metrics <- forcedlabor::ml_perf_metrics(data = classif_res$pred_conf)
+perf_metrics <- ml_perf_metrics(data = classif_res$pred_conf)
 
 region_lookup <- fl_training %>%
   distinct(indID, flag_region)
