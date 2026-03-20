@@ -56,6 +56,8 @@ dev_ml_train <- function(cv_setup,
       purrr::map(cv_setup, "cv_folds")
     ),
     function(workflow, seed, bag, folds_tbl){
+       # Ensure all bags look the same
+      set.seed(seed)
 
       # if (!"themis" %in% loadedNamespaces())
       #   requireNamespace("themis", quietly = TRUE)
