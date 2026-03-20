@@ -116,7 +116,7 @@ dev_ml_tune <- function(training_data,
                    function(x, y, .bag) # added .data$bag as third mapped input
                    {
 
-                     # Ensure all bags look the same
+                     # Ensure all bags look the same across hyperparameter tuning grid
                      set.seed(y)
 
                      cv_splits <- cv_splits_all |>
