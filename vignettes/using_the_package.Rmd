@@ -99,10 +99,10 @@ This table contains AIS-derived data at a yearly scale for positive vessels
 
 data("fl_training")
 
-fl_training$known_non_offender <- as.factor(fl_training$known_non_offender)
-
-levels(fl_training$known_non_offender) <- 
-  c(levels(fl_training$known_non_offender),1)
+set.seed(101)
+rows_pred <- sample(1:dim(fl_training)[1], size = 1000)
+fl_predict <- fl_training[rows_pred,]
+fl_training <- fl_training[-rows_pred,]
 ```
 
 
@@ -221,7 +221,6 @@ for the analysis and assessment datasets
 
 
 ```{r cv_splits}
-
 num_folds <- 5 #5
 num_bags <- 2 #5 
 down_sample_ratio <- 1
@@ -229,7 +228,9 @@ num_common_seeds <- 2 #3
 ```
 
 
-### 3. Fit random forests
+### 3. Specifying the random forest model 
+
+There are two aspect to define as part of our random forest model, the model recipe, and the model specifications, both of them handled with the function `dev_rf_setup`
 
 #### Writing the recipe
 
@@ -260,22 +261,6 @@ predictors
   the second most common value is large.
 - Using `step_corr` we only keep predictors with bivariate correlations smaller 
 than 0.75.
-
-
-```{r fl_rec}
-
-fl_rec <- recipes::recipe(known_offender ~ .,
-                          data = fl_training) |>
-  recipes::update_role(indID,
-                       new_role = "id") |>
-  recipes::update_role(flag_region, known_non_offender,
-                       new_role = "dont_use")  |>
-  recipes::update_role(source_id_number, new_role = "control")  |>
-  recipes::step_nzv(recipes::all_predictors())  |>
-  recipes::step_corr(recipes::all_numeric(), threshold = 0.75)
-
-```
-
 
 #### Specifying the model
 
@@ -313,16 +298,18 @@ by a factor
     bring in a new predictor if it improves impurity by at least twice as much
     the default would require
 
-
-```{r fl_spec}
-
-rf_spec <-
-  parsnip::rand_forest(trees = 500,
-                       mtry = 1,
-                       min_n = 15) |>
-  parsnip::set_mode("classification") |>
-  parsnip::set_engine("ranger", regularization.factor = 0.5)
-
+```{r rf_setup}
+rf_setup<-dev_rf_setup(training_data = fl_training,
+                      y = "known_offender", #response
+                      x = colnames(fl_training)[colnames(fl_training) != "known_offender"],
+                      id = "indID",
+                      dont_use = c("flag_region", "known_non_offender"),
+                      control = "source_id_number",
+                      corr_threshold = 0.75,
+                      rf_trees = 500,
+                      rf_mtry = 1,
+                      rf_min_n = 15,
+                      rf_reg_factor = 0.5)
 ```
 
 #### Parallelization strategy
@@ -357,98 +344,90 @@ oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 Once the training data has been prepped and the model recipe and specifications
 set, we can now use the package functions to fit models and generate scores. 
 
-### 4. Predicted scores (using `dev_ml_train`)
+### 4. Setting up the cross-validation (using `dev_cv_setup`)
+
+```{r cv_setup}
+cv_df<- dev_cv_setup(training_data = fl_training,
+                     num_folds = num_folds,
+                     num_bags = num_bags,
+                     num_seeds = down_sample_ratio,
+                     fl_rec = rf_setup$rf_recipe,
+                     rf_spec = rf_setup$rf_spec,
+                     down_sample_ratio = down_sample_ratio,
+                     free_cores = free_cores,
+                     parallel_plan = parallel_plan)
+```
+
+
+### 5. Predict scores (using `dev_ml_train`)
 
 - `dev_ml_train`: fits a Random Forest for each fold x bag x seed using
-the previous recipe and specification steps
+the previous recipe, specification steps and cross-validation setup
 - It applies a downsampling ratio of 1:1 to the training set
-- This step returns `train_pred_proba` a table with probabilities for
-assessment rows 
+- This step returns list of  `train_probabilities` a table with probabilities for
+assessment rows and the `fitted_models`. If a directory is specified, fitted models are saved accordingly. 
 
-### 5. Predictions from all seeds (using `dev_ml_train`)
+### 6. Predictions from all seeds (using `dev_ml_train`)
 
 - `dev_ml_train` also pools scores across all seeds and bags
 
-
-```{r train_pred_proba}
-
+```{r ml_train}
 tictoc::tic()
-cv_df<- dev_cv_setup(training_data = fl_training,
-                       num_folds = num_folds,
-                       num_bags = num_bags,
-                       num_seeds = down_sample_ratio,
-                       fl_rec = fl_rec,
-                       rf_spec = rf_spec,
-                       down_sample_ratio = down_sample_ratio)
 trained_models <- dev_ml_train(cv_setup = cv_df,
                            free_cores = free_cores,
                            parallel_plan = parallel_plan,
                            save_dir = NULL)#"../models/test")
-train_pred_proba = trained_models$train_probabilities
 tictoc::toc() 
-
-### training and prediction (scores)
-
-#tictoc::tic()
-#train_pred_proba <- ml_train_predict(
-#  fl_rec = fl_rec,
-#  rf_spec = rf_spec,
-#  cv_splits_all = cv_splits_all,
-#  bag_runs = bag_runs,
-#  down_sample_ratio = down_sample_ratio,
-#  parallel_plan = parallel_plan,
-#  free_cores = free_cores,
-#  prediction_df = NULL
-#)
-#tictoc::toc()
-
-
-#ml_train(fl_rec = fl_rec, 
-#         rf_spec = rf_spec,
-#         cv_splits_all = cv_splits_all,
-#         bag_runs = bag_runs,
-#         down_sample_ratio = down_sample_ratio,
-#         parallel_plan = parallel_plan,
-#         free_cores = free_cores,
-#         prediction_df = NULL,
-#         save_dir = "../models")
-  
 ```
 
-`train_pred_proba` contains the following:
+`trained_models$train_probabilities` contains the following:
 
 - `common_seed`: which randomization seed was used to generate both your 
 down‑sampling and your CV splits for this batch of runs
 - `bag`: which down‑sample “bag” this row belongs to
-- `counter`: a simple row index for the combination of seed x bag grid
 - `id`: the fold identifier from your CV split
 - `.pred_1`: the model’s predicted probability that this particular row is 
 positive
 - `indID`: a unique vessel identifier
 - `known offender`: if the vessel is positive
 - `known non offender`: if the vessel is negative
-- `holdout`: if 0, one of your CV assessment folds, if 1, an external 
+- `holdout`:  0 as they result from one of your CV assessment folds, if 1, an external 
 hold‑out dataset (if passed via prediction_df)
     - If you have no `prediction_df = NULL`, all rows have `holdout == 0`
 
 
-```{r train_pred_proba_output}
+```{r train_proba_output}
 
-dplyr::glimpse(train_pred_proba)
+dplyr::glimpse(trained_models$train_probabilities)
 
 ```
 
-### 6. Loading model and predicting over new data 
+### 7. Loading previously fitted models 
 
-Previously trained models can be loaded from your local disk using `dev_ml_load` based on your cross-validation setup (output of `dev_cv_setup`) and used to predict over new datasets using `dev_ml_predict`. 
+Previously trained models can be loaded from your local disk using `dev_ml_load` based on your cross-validation setup (output of `dev_cv_setup`).
 
-```{r}
+```{r load_models}
 #loaded_models <- dev_ml_load(cv_setup = cv_df,
-#                             save_dir = system.file("models/test", package = "forcedlabor"))
-#predictions = dev_ml_predict(trained_models = loaded_models,
-#                             new_data = fl_predict,
-#                             free_cores = free_cores,
-#                             parallel_plan = parallel_plan)
+#                             save_dir = system.file("./models/test", package = "forcedlabor"))
+```
+
+### 8. Predicting over new data 
+Fitted models can be used to predict over new data using `dev_ml_predict`. 
+
+```{r rf_predictions}
+predictions = dev_ml_predict(trained_models = trained_models$fitted_models,
+                             new_data = fl_predict,
+                             free_cores = free_cores,
+                             parallel_plan = parallel_plan)
+```
+
+`predictions` contains the same columns as `trained_models$train_probabilities`, but `holdout` takes value of 1, as predictions were generated over an external dataset not used for training.
+
+
+```{r rf_predictions_output}
+
+dplyr::glimpse(predictions)
+
 ```
 
 ### 7. Density-based algorithm for classification threshold (using `ml_classification`)
@@ -458,7 +437,7 @@ estimates α (upper bound on positives in the unlabeled set),
 and chooses a calibrated threshold `t` so the share of 
 predicted positives ≈ α (DEDPUL).
 
-See [@ivanov_2020] for more details on the DEDPUL alogirthm. 
+See [@ivanov_2020] for more details on the DEDPUL algorithm. 
 
 **Tunable args:**
 
@@ -478,19 +457,17 @@ are within the range
 
 
 ```{r classif_res, warning=FALSE}
-
 #tictoc::tic()
-#classif_res <- ml_classification(data = train_pred_proba,
+#classif_res <- ml_classification(data = trained_models$train_probabilities,
 #                                 steps = 1000,
 #                                 plotting = FALSE,
 #                                 filepath = NULL,
 #                                 threshold = seq(0, .99, by = 0.01),
 #                                 eps = 0.01,
+#                                 confidence_levels = TRUE,
 #                                 parallel_plan = parallel_plan,
 #                                 free_cores = free_cores)
 #tictoc::toc()
-
-
 ```
 
 
@@ -512,9 +489,7 @@ classification.
 
 
 ```{r classif_res_pred_conf}
-
 #dplyr::glimpse(classif_res$pred_conf)
-
 ```
 
 ## Additional steps: Performance and Fairness
