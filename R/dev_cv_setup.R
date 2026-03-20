@@ -11,6 +11,8 @@
 #' @param down_sample_ratio See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
 #' downsampled them in the training set with a 1-1 ratio, i.e. the number of
 #' positive and unlabeled cases used for training would be equal
+#' @param free_cores Number of available cores. Add more if you need to do many things at the same time
+#' @param parallel_plan Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)
 #'
 #' @returns List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 #'
@@ -30,8 +32,24 @@ dev_cv_setup <- function(training_data,
                           num_seeds,
                           fl_rec,
                           rf_spec,
-                          down_sample_ratio)
+                          down_sample_ratio,
+                          free_cores,
+                          parallel_plan)
 {
+
+  # Setting up the parallelization
+  if (parallel_plan == "multicore") {
+    future::plan(future::multicore,
+                 workers = parallel::detectCores() - free_cores, gc = TRUE)
+    # the garbage collector will run automatically (and asynchronously) on the
+    # workers to minimize the memory footprint of the worker.
+  } else if (parallel_plan == "psock") {
+    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
+    future::plan(future::cluster, workers = cl)
+  } else {
+    future::plan(future::multisession,
+                 workers = parallel::detectCores() - free_cores, gc = TRUE)
+  }
 
   common_seed_tibble <- tibble::tibble(common_seed =
                                          seq(1:num_seeds) * 101)
@@ -59,7 +77,7 @@ dev_cv_setup <- function(training_data,
                               v = num_folds)
     }))
 
-  out<-purrr::pmap(list(down_bags$fl_recipe,
+  out<-furrr::future_pmap(list(down_bags$fl_recipe,
                         down_bags$common_seed,
                         down_bags$bag), # previously future_map2, now pmap to map 3 inputs
                    function(x, y, .bag) # added .data$bag as third mapped input
@@ -93,7 +111,7 @@ dev_cv_setup <- function(training_data,
                          seed = y,
                          bag = .bag)
                        )
-                   })
+                   },.options = furrr::furrr_options(seed = TRUE, packages = c("themis")))
 
   return(out)
 }

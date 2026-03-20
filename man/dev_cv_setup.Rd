@@ -13,7 +13,9 @@ dev_cv_setup(
   num_seeds,
   fl_rec,
   rf_spec,
-  down_sample_ratio
+  down_sample_ratio,
+  free_cores,
+  parallel_plan
 )
 }
 \arguments{
@@ -32,6 +34,10 @@ dev_cv_setup(
 \item{down_sample_ratio}{See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
 downsampled them in the training set with a 1-1 ratio, i.e. the number of
 positive and unlabeled cases used for training would be equal}
+
+\item{free_cores}{Number of available cores. Add more if you need to do many things at the same time}
+
+\item{parallel_plan}{Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)}
 }
 \value{
 List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
