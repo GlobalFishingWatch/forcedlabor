@@ -84,7 +84,6 @@ hyper_pars<-dev_ml_hyperpar(tune_test)
 # cv_setup: set ups the workflow and cv folds. Returns cv_workflow, cv_folds, seed and bag (for training the model in ml_train)
 # ml_train: train and predict over the test set. Return each fitted model and the predicted df of scores over the test set
 
-# GM: testing the functions over the first 5 bags (3 seeds)
 tictoc::tic()
 cv_df<- dev_cv_setup(training_data = fl_training,
                        num_folds = 5,
@@ -92,7 +91,9 @@ cv_df<- dev_cv_setup(training_data = fl_training,
                        num_seeds = 2,
                        fl_rec = rf_setup$rf_recipe,
                        rf_spec = rf_setup$rf_spec,
-                       down_sample_ratio = 1)
+                       down_sample_ratio = 1,
+                       free_cores = free_cores,
+                       parallel_plan = parallel_plan)
 
 train_test <- dev_ml_train(cv_setup = cv_df,
                            free_cores = free_cores,
@@ -209,7 +210,7 @@ rf_spec <-
   parsnip::set_mode("classification") |>
   parsnip::set_engine("ranger", regularization.factor = tune())
 
-train_pred_proba_original <- ml_training(fl_rec = rf_setup$rf_recipe,
+tune_original <- ml_training(fl_rec = rf_setup$rf_recipe,
                                 rf_spec = rf_spec,
                                 cv_splits_all = cv_splits_all,
                                 bag_runs = bag_runs,
@@ -218,10 +219,10 @@ train_pred_proba_original <- ml_training(fl_rec = rf_setup$rf_recipe,
                                 parallel_plan = parallel_plan,
                                 free_cores = free_cores)
 
-all(train_pred_proba_original$.pred_1 == tune_test$.pred_1)
-sum(train_pred_proba_original$.pred_1) == sum(tune_test$.pred_1)
+all(tune_original$.pred_1 == tune_test$.pred_1)
+sum(tune_original$.pred_1) == sum(tune_test$.pred_1)
 
-hyper_pars_original = ml_hyperpar(train_pred_proba_original)
+hyper_pars_original = ml_hyperpar(tune_original)
 hyper_pars_original$best_hyperparameters
 hyper_pars$best_hyperparameters
 
@@ -235,7 +236,7 @@ rf_spec <-
 
 #GM: the predict over the train dataset is not exactly the same between ml_training and ml_train_predict!
 train_pred_proba_original <- ml_training(fl_rec = rf_setup$rf_recipe,
-                                rf_spec = rf_spec,
+                                rf_spec = rf_setup$rf_spec,
                                 cv_splits_all = cv_splits_all,
                                 bag_runs = bag_runs,
                                 down_sample_ratio = down_sample_ratio,
@@ -244,6 +245,8 @@ train_pred_proba_original <- ml_training(fl_rec = rf_setup$rf_recipe,
                                 free_cores = free_cores)
 sum(train_pred_proba_original$.pred_1)
 sum(train_test$train_probabilities$.pred_1)
+
+hist(train_pred_proba_original$.pred_1 - train_test$train_probabilities$.pred_1)
 
 #test<-apply(common_seed_tibble, MARGIN = 1, FUN = function(x){
 #  set.seed(x)
@@ -256,8 +259,8 @@ sum(train_test$train_probabilities$.pred_1)
 source("./R/ml_train_predict.R")
 tictoc::tic()
 train_pred_proba2 <- ml_train_predict(
-  fl_rec = fl_rec,
-  rf_spec = rf_spec,
+  fl_rec = rf_setup$rf_recipe,
+  rf_spec = rf_setup$rf_spec,
   cv_splits_all = cv_splits_all,
   bag_runs = bag_runs,
   down_sample_ratio = down_sample_ratio,
