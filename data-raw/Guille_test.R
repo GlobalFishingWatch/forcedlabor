@@ -13,8 +13,8 @@ load(file=file.path(ddir,"fl_training.rda"))
 dim(fl_training)
 
 # devtools::load_all()
-#devtools::install_github("GlobalFishingWatch/forcedlabor@guille-dev")
-#library(forcedlabor)
+devtools::install_github("GlobalFishingWatch/forcedlabor@guille-dev")
+library(forcedlabor)
 #data("fl_training")
 
 set.seed(101)
@@ -84,21 +84,19 @@ hyper_pars<-dev_ml_hyperpar(tune_test)
 # cv_setup: set ups the workflow and cv folds. Returns cv_workflow, cv_folds, seed and bag (for training the model in ml_train)
 # ml_train: train and predict over the test set. Return each fitted model and the predicted df of scores over the test set
 
+source("./R/dev_cvsetup2.R")
 tictoc::tic()
 cv_df<- dev_cv_setup(training_data = fl_training,
-                       num_folds = 5,
-                       num_bags = 2,
-                       num_seeds = 2,
-                       fl_rec = rf_setup$rf_recipe,
-                       rf_spec = rf_setup$rf_spec,
-                       down_sample_ratio = 1,
-                       free_cores = free_cores,
-                       parallel_plan = parallel_plan)
-
+                     num_folds = 5,
+                     num_bags = 2,
+                     num_seeds = 2,
+                     fl_rec = rf_setup$rf_recipe,
+                     rf_spec = rf_setup$rf_spec,
+                     down_sample_ratio = 1)
 train_test <- dev_ml_train(cv_setup = cv_df,
-                           free_cores = free_cores,
-                           parallel_plan = parallel_plan,
-                           save_dir = "./models/test")
+                            free_cores = free_cores,
+                            parallel_plan = parallel_plan,
+                            save_dir = "./models/test")
 tictoc::toc() #6.773 sec elapsed # 250 sec for 5 bags
 
 loaded_models <- dev_ml_load(cv_setup = cv_df,
