@@ -41,8 +41,8 @@ library(forcedlabor)
 
 The model workflow contains the following:
 Steps 1-3 involve data and model prep
-Steps 4-8 use the package functions
-Steps 9 and 10 are additional steps for assessing model performance and fairness
+Steps 4-11 use the package functions
+Steps 12 and 13 are additional steps for assessing model performance and fairness
 (not included in workflow plot)
 
 ```{r workflow, echo=FALSE, out.width="100%"}
@@ -96,7 +96,6 @@ This table contains AIS-derived data at a yearly scale for positive vessels
 
 
 ```{r load_data}
-
 data("fl_training")
 
 set.seed(101)
@@ -228,13 +227,12 @@ num_common_seeds <- 2 #3
 ```
 
 
-### 3. Specifying the random forest model 
+### 3. Specifying the random forest model (using `dev_rf_setup`) 
 
-There are two aspect to define as part of our random forest model, the model recipe, and the model specifications, both of them handled with the function `dev_rf_setup`
+There are two aspect to define as part of our random forest model, the model recipe, and the model specifications.
 
 #### Writing the recipe
 
-Next, we want to write the recipe for the model. 
 Here we set the roles of the different variables that will be used. 
 
 **Setting the roles of the variables used**
@@ -334,8 +332,6 @@ if (parallel_plan == "multisession") {
 free_cores <- 4 # add more if you need to do many things at the same time
 oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 # options(future.globals.maxSize = 50 * 1024 ^ 3)
-
-
 ```
 
 
@@ -353,9 +349,7 @@ cv_df<- dev_cv_setup(training_data = fl_training,
                      num_seeds = down_sample_ratio,
                      fl_rec = rf_setup$rf_recipe,
                      rf_spec = rf_setup$rf_spec,
-                     down_sample_ratio = down_sample_ratio,
-                     free_cores = free_cores,
-                     parallel_plan = parallel_plan)
+                     down_sample_ratio = down_sample_ratio)
 ```
 
 
@@ -425,12 +419,10 @@ predictions = dev_ml_predict(trained_models = trained_models$fitted_models,
 
 
 ```{r rf_predictions_output}
-
 dplyr::glimpse(predictions)
-
 ```
 
-### 7. Density-based algorithm for classification threshold (using `ml_classification`)
+### 9. Density-based algorithm for classification threshold (using `ml_classification`)
 
 `ml_classification` aggregates `.pred_1` per `indID` to `pred_mean`, 
 estimates α (upper bound on positives in the unlabeled set), 
@@ -471,7 +463,7 @@ are within the range
 ```
 
 
-### 8. Classification (using `ml_classification`)
+### 10. Classification (using `ml_classification`)
 
 - Within `ml_classification` we apply the calibrated threshold `t` to 
 each vessel’s mean score:  
@@ -479,7 +471,7 @@ each vessel’s mean score:
 - This produces the binary `pred_class`
 
 
-### 9. Confidence for each vessel year classification (using `ml_classification`)
+### 11. Confidence for each vessel year classification (using `ml_classification`)
 
 - The `confidence` value indicates how consistently a vessel’s 
 score falls on the same side of `t` across seeds × bags
@@ -495,7 +487,7 @@ classification.
 ## Additional steps: Performance and Fairness
 
 
-### 10. Performance: Recall and specificity (using `ml_perf_metrics`)
+### 12. Performance: Recall and specificity (using `ml_perf_metrics`)
 
 The performance of the model is evaluated through:
 
@@ -516,7 +508,7 @@ proportion of  negative cases predicted by the model as negatives
 ```
 
 
-### 11. Fairness tests
+### 13. Fairness tests
 
 Statistical non-discrimination or fairness measures aim to assess the absence or
 degree of discrimination of given groups regarding classification. 
