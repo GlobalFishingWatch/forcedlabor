@@ -10,8 +10,6 @@
 #' @param rf_spec Random forest classifier specifications
 #' @param down_sample_ratio See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
 #' downsampled them in the training set with a 1-1 ratio, i.e. the number of positive and unlabeled cases used for training would be equal
-#' @param free_cores Number of available cores. Add more if you need to do many things at the same time
-#' @param parallel_plan Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)
 #'
 #' @returns List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 #'
@@ -25,30 +23,14 @@
 #'
 #' @export
 
-dev_cv_setup <- function(training_data,
+dev_cv_setup2 <- function(training_data,
                           num_folds,
                           num_bags,
                           num_seeds,
                           fl_rec,
                           rf_spec,
-                          down_sample_ratio,
-                          free_cores,
-                          parallel_plan)
+                          down_sample_ratio)
 {
-
-  # Setting up the parallelization
-  if (parallel_plan == "multicore") {
-    future::plan(future::multicore,
-                 workers = parallel::detectCores() - free_cores, gc = TRUE)
-    # the garbage collector will run automatically (and asynchronously) on the
-    # workers to minimize the memory footprint of the worker.
-  } else if (parallel_plan == "psock") {
-    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
-    future::plan(future::cluster, workers = cl)
-  } else {
-    future::plan(future::multisession,
-                 workers = parallel::detectCores() - free_cores, gc = TRUE)
-  }
 
   common_seed_tibble <- tibble::tibble(common_seed =
                                          seq(1:num_seeds) * 101)
@@ -76,41 +58,41 @@ dev_cv_setup <- function(training_data,
                               v = num_folds)
     }))
 
-  out<-furrr::future_pmap(list(down_bags$fl_recipe,
-                        down_bags$common_seed,
-                        down_bags$bag), # previously future_map2, now pmap to map 3 inputs
-                   function(x, y, .bag) # added .data$bag as third mapped input
-                   {
+  out<-purrr:::pmap(list(down_bags$fl_recipe,
+                         down_bags$common_seed,
+                         down_bags$bag), # previously future_map2, now pmap to map 3 inputs
+                    function(x, y, .bag) # added .data$bag as third mapped input
+                    {
 
-                     # Ensure all bags look the same
-                     set.seed(y)
+                      # Ensure all bags look the same
+                      set.seed(y)
 
-                     # specifying the workflow with the model, recipe for data and how the
-                     # tuning goes
-                     cv_predictions_workflow <-
-                       workflows::workflow() |>
-                       workflows::add_model(rf_spec) |> #GM: is this necessary here, or could be included later in dev_ml_train once hyperparameters defined?
-                       workflows::add_recipe(x)
+                      # specifying the workflow with the model, recipe for data and how the
+                      # tuning goes
+                      cv_predictions_workflow <-
+                        workflows::workflow() |>
+                        workflows::add_model(rf_spec) |> #GM: is this necessary here, or could be included later in dev_ml_train once hyperparameters defined?
+                        workflows::add_recipe(x)
 
-                     # get the folds related to that common seed, train and predict
-                     cv_predictions <-
-                       cv_splits_all |>
-                       dplyr::filter(.data$common_seed == y) |>
-                       purrr::pluck('cv_splits',1) |> # unlist first (unique) element
-                       dplyr::mutate(# Create analysis dataset based on CV folds
-                         analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
-                         # Create assessment dataset based on CV folds
-                         assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
-                       dplyr::select(-.data$splits)
+                      # get the folds related to that common seed, train and predict
+                      cv_predictions <-
+                        cv_splits_all |>
+                        dplyr::filter(.data$common_seed == y) |>
+                        purrr::pluck('cv_splits',1) |> # unlist first (unique) element
+                        dplyr::mutate(# Create analysis dataset based on CV folds
+                          analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
+                          # Create assessment dataset based on CV folds
+                          assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
+                        dplyr::select(-.data$splits)
 
-                     return(
-                       list(
-                         workflow   = cv_predictions_workflow,
-                         cv_folds = cv_predictions,
-                         seed = y,
-                         bag = .bag)
-                       )
-                   },.options = furrr::furrr_options(seed = TRUE, packages = c("themis")))
+                      return(
+                        list(
+                          workflow   = cv_predictions_workflow,
+                          cv_folds = cv_predictions,
+                          seed = y,
+                          bag = .bag)
+                      )
+                    })
 
   return(out)
 }
