@@ -23,7 +23,7 @@
 #'
 #' @export
 
-dev_cv_setup2 <- function(training_data,
+dev_cv_setup <- function(training_data,
                           num_folds,
                           num_bags,
                           num_seeds,
