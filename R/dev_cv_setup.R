@@ -9,8 +9,7 @@
 #' @param fl_rec Model recipe
 #' @param rf_spec Random forest classifier specifications
 #' @param down_sample_ratio See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
-#' downsampled them in the training set with a 1-1 ratio, i.e. the number of
-#' positive and unlabeled cases used for training would be equal
+#' downsampled them in the training set with a 1-1 ratio, i.e. the number of positive and unlabeled cases used for training would be equal
 #' @param free_cores Number of available cores. Add more if you need to do many things at the same time
 #' @param parallel_plan Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)
 #'
