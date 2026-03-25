@@ -45,7 +45,7 @@ or psock - this last one may need calling libraries inside)}
 \item{free_cores}{number of free cores to leave out of parallelization}
 }
 \value{
-Data frame of train cross-validated datasets
+Data frame of train cross-validated datasets across hyper-parameter values specified over grid.
 }
 \description{
 Tune random forest hyper-parameters specified during dev_rf_setup

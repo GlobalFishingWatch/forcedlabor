@@ -15,7 +15,7 @@
 #' or psock - this last one may need calling libraries inside)
 #' @param free_cores number of free cores to leave out of parallelization
 #'
-#' @returns  Data frame of train cross-validated datasets
+#' @returns  Data frame of train cross-validated datasets across hyper-parameter values specified over grid.
 #'
 #' @importFrom dplyr filter mutate row_number select
 #' @importFrom purrr map pluck
