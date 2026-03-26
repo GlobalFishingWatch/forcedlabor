@@ -14,7 +14,7 @@ dim(fl_training)
 
 # devtools::load_all()
 devtools::install_github("GlobalFishingWatch/forcedlabor@guille-dev")
-library(forcedlabor)
+#library(forcedlabor)
 #data("fl_training")
 
 set.seed(101)
@@ -22,8 +22,8 @@ rows_pred <- sample(1:dim(fl_training)[1], size = 1000)
 fl_predict <- fl_training[rows_pred,]
 fl_training <- fl_training[-rows_pred,]
 
-source("./R/dev_rf_setup.R")
-rf_setup<-dev_rf_setup(training_data = fl_training,
+#source("./R/dev_rf_setup.R")
+rf_setup<-forcedlabor::dev_rf_setup(training_data = fl_training,
                       y = "known_offender", #response
                       x = colnames(fl_training)[colnames(fl_training) != "known_offender"],
                       id = "indID",
@@ -48,13 +48,13 @@ oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 
 
 # Guille´s functions ------------------------------------------------------
-source("./R/dev_ml_tune.R")
-source("./R/dev_cv_setup.R")
-source("./R/dev_bag_downsample.R")
-source("./R/dev_ml_train.R")
-source("./R/dev_ml_load.R")
-source("./R/dev_ml_predict.R")
-source("./R/dev_ml_hyperpar.R")
+#source("./R/dev_ml_tune.R")
+#source("./R/dev_cv_setup.R")
+#source("./R/dev_bag_downsample.R")
+#source("./R/dev_ml_train.R")
+#source("./R/dev_ml_load.R")
+#source("./R/dev_ml_predict.R")
+#source("./R/dev_ml_hyperpar.R")
 
 
 #--------- First we tune model hyperparameters:
@@ -66,7 +66,7 @@ grill <- expand.grid(
 )
 
 tictoc::tic()
-tune_test<-dev_ml_tune(training_data = fl_training,
+tune_test<-forcedlabor::dev_ml_tune(training_data = fl_training,
                        fl_rec = rf_setup$rf_recipe,
                        rf_spec = rf_setup$rf_spec,
                        num_folds = 5,
@@ -77,56 +77,55 @@ tune_test<-dev_ml_tune(training_data = fl_training,
                        parallel_plan = parallel_plan,
                        free_cores = free_cores)
 tictoc::toc() #165.266 sec elapsed
-hyper_pars<-dev_ml_hyperpar(tune_test)
+hyper_pars<-forcedlabor::dev_ml_hyperpar(tune_test)
 
 # I have split ml_train_predict in three functions:
 # bag_downsample: get a recipe with downsampling for each bag and corresponding seed (nested within the cv_setup)
 # cv_setup: set ups the workflow and cv folds. Returns cv_workflow, cv_folds, seed and bag (for training the model in ml_train)
 # ml_train: train and predict over the test set. Return each fitted model and the predicted df of scores over the test set
 
-source("./R/dev_cvsetup2.R")
 tictoc::tic()
-cv_df<- dev_cv_setup(training_data = fl_training,
+cv_df<- forcedlabor::dev_cv_setup(training_data = fl_training,
                      num_folds = 5,
                      num_bags = 2,
                      num_seeds = 2,
                      fl_rec = rf_setup$rf_recipe,
                      rf_spec = rf_setup$rf_spec,
                      down_sample_ratio = 1)
-train_test <- dev_ml_train(cv_setup = cv_df,
+train_test <- forcedlabor::dev_ml_train(cv_setup = cv_df,
                             free_cores = free_cores,
                             parallel_plan = parallel_plan,
                             save_dir = "./models/test")
 tictoc::toc() #6.773 sec elapsed # 250 sec for 5 bags
 
-loaded_models <- dev_ml_load(cv_setup = cv_df,
+loaded_models <- forcedlabor::dev_ml_load(cv_setup = cv_df,
                              save_dir = "./models/test")
 
 
-predictions1 = dev_ml_predict(trained_models = train_test$fitted_models,
+predictions1 = forcedlabor::dev_ml_predict(trained_models = train_test$fitted_models,
                               new_data = fl_predict,
                               free_cores = free_cores,
                               parallel_plan = parallel_plan)
 
-predictions2 = dev_ml_predict(trained_models = loaded_models,
+predictions2 = forcedlabor::dev_ml_predict(trained_models = loaded_models,
                               new_data = fl_predict,
                               free_cores = free_cores,
                               parallel_plan = parallel_plan)
 
-source("./R/ml_classification.R")
-source("./R/calibrated_threshold.R")
-source("./R/dedpul_estimation.R")
-source("./R/kernel_unlabeled.R")
-source("./R/compute_r.R")
-source("./R/monotonize.R")
-source("./R/rolling_median.R")
-source("./R/compute_alpha_star.R")
-source("./R/compute_D.R")
-source("./R/conf_estimate.R")
+#source("./R/ml_classification.R")
+#source("./R/calibrated_threshold.R")
+#source("./R/dedpul_estimation.R")
+#source("./R/kernel_unlabeled.R")
+#source("./R/compute_r.R")
+#source("./R/monotonize.R")
+#source("./R/rolling_median.R")
+#source("./R/compute_alpha_star.R")
+#source("./R/compute_D.R")
+#source("./R/conf_estimate.R")
 
 tictoc::tic()
 #test = rbind(train_test$train_probabilities,predictions1)
-classif_res <- ml_classification(data = train_test$train_probabilities,
+classif_res <- forcedlabor::ml_classification(data = train_test$train_probabilities,
                                  steps = 1000,
                                  plotting = FALSE,
                                  filepath = NULL,
@@ -137,8 +136,8 @@ classif_res <- ml_classification(data = train_test$train_probabilities,
                                  free_cores = free_cores)
 tictoc::toc()
 
-source("./R/ml_perf_metrics.R")
-perf_metrics <- ml_perf_metrics(data = classif_res$pred_conf)
+#source("./R/ml_perf_metrics.R")
+perf_metrics <- forcedlabor::ml_perf_metrics(data = classif_res$pred_conf)
 
 region_lookup <- fl_training %>%
   distinct(indID, flag_region)
