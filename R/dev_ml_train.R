@@ -50,12 +50,12 @@ dev_ml_train <- function(cv_setup,
 
   out <- furrr::future_pmap(
     list(
-      purrr::map(cv_setup, "workflow"),
       purrr::map(cv_setup, "seed"),
       purrr::map(cv_setup, "bag"),
+      purrr::map(cv_setup, "workflow"),
       purrr::map(cv_setup, "cv_folds")
     ),
-    function(workflow, seed, bag, folds_tbl){
+    function(seed, bag, workflow, folds_tbl){
        # Ensure all bags look the same
       set.seed(seed)
 
