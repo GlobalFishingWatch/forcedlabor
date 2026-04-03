@@ -12,9 +12,9 @@
 #' @importFrom purrr map
 #' @importFrom themis step_downsample
 
-dev_bag_downsample<-function(bag_runs,
-                         fl_rec,
-                         down_sample_ratio){
+dev_bag_downsample <- function(bag_runs,
+                               fl_rec,
+                               down_sample_ratio) {
   bag_runs |>
     dplyr::mutate(
       fl_recipe = purrr::map(.data$recipe_seed, function(x) {

@@ -15,6 +15,8 @@
 #' @param free_cores number of free cores to leave out of parallelization
 #' @param prediction_df hold-out data frame with possible offenders and non
 #' offenders to predict on. If NULL (default), then only predict on the training set
+#' @param save_dir Directory to save trained models
+#'
 #' @return an object with predicted values and fitted models
 #'
 #' @importFrom furrr future_pmap furrr_options

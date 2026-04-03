@@ -1,4 +1,4 @@
-Package: forcedlabor
+Package: forcedlabordev
 Title: forced labor machine learning algorithms
 Version: 0.0.0.9000
 Authors@R:
@@ -34,6 +34,8 @@ Imports:
     yardstick
 Suggests:
     devtools,
+    glue, 
+    here,
     knitr,
     ranger,
     rmarkdown,

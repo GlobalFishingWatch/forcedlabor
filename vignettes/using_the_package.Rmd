@@ -6,9 +6,12 @@ output:
     toc_depth: 3
 bibliography: references.bib
 vignette: >
-  %\VignetteIndexEntry{using_the_package}
+  %\VignetteIndexEntry{Using the package}
   %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+  %\VignetteEncoding{UTF-8}"
+execute:
+  project
+  
 ---
 
 
@@ -46,8 +49,8 @@ Steps 12 and 13 are additional steps for assessing model performance and fairnes
 (not included in workflow plot)
 
 ```{r workflow, echo=FALSE, out.width="100%"}
-
-img <- normalizePath(file.path("fig01_model_workflow.png"), mustWork = TRUE)
+here <- here::here()
+img <- (glue::glue(here,"/vignettes/fig01_model_workflow.png"))
 knitr::include_graphics(img, rel_path = FALSE)
 
 ```

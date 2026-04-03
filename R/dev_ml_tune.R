@@ -101,7 +101,7 @@ dev_ml_tune <- function(training_data,
     message("Performing parameter tuning for ", paste(params, collapse = ", "), " over specified grid")
 
     rf_spec <- rf_spec |>
-      update(
+      recipes::update(
         trees = !!trees_val,
         mtry  = !!mtry_val,
         min_n = !!min_n_val,
@@ -110,7 +110,7 @@ dev_ml_tune <- function(training_data,
 
   }
 
-  out<-furrr::future_pmap(list(down_bags$fl_recipe,
+  out <- furrr::future_pmap(list(down_bags$fl_recipe,
                                down_bags$common_seed,
                                down_bags$bag), # previously future_map2, now pmap to map 3 inputs
                    function(x, y, .bag) # added .data$bag as third mapped input

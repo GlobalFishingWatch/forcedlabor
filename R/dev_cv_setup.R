@@ -58,7 +58,7 @@ dev_cv_setup <- function(training_data,
                               v = num_folds)
     }))
 
-  out<-purrr:::pmap(list(down_bags$fl_recipe,
+  out <- purrr::pmap(list(down_bags$fl_recipe,
                          down_bags$common_seed,
                          down_bags$bag), # previously future_map2, now pmap to map 3 inputs
                     function(x, y, .bag) # added .data$bag as third mapped input
