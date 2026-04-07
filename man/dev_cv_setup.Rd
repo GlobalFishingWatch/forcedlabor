@@ -13,7 +13,8 @@ dev_cv_setup(
   num_seeds,
   fl_rec,
   rf_spec,
-  down_sample_ratio
+  down_sample_ratio,
+  group_var = "source_id_number"
 )
 }
 \arguments{
@@ -31,6 +32,9 @@ dev_cv_setup(
 
 \item{down_sample_ratio}{See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
 downsampled them in the training set with a 1-1 ratio, i.e. the number of positive and unlabeled cases used for training would be equal}
+
+\item{group_var}{from rsample::group_vfold_cv: A variable in data (single character or name) used for grouping observations with the same value
+to either the analysis or assessment set within a fold.}
 }
 \value{
 List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers

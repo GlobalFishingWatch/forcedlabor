@@ -10,6 +10,8 @@
 #' @param rf_spec Random forest classifier specifications
 #' @param down_sample_ratio See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
 #' downsampled them in the training set with a 1-1 ratio, i.e. the number of positive and unlabeled cases used for training would be equal
+#' @param group_var from rsample::group_vfold_cv: A variable in data (single character or name) used for grouping observations with the same value
+#' to either the analysis or assessment set within a fold.
 #'
 #' @returns List object containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers
 #'
@@ -29,7 +31,8 @@ dev_cv_setup <- function(training_data,
                           num_seeds,
                           fl_rec,
                           rf_spec,
-                          down_sample_ratio)
+                          down_sample_ratio,
+                          group_var = "source_id_number")
 {
 
   common_seed_tibble <- tibble::tibble(common_seed =
@@ -54,7 +57,7 @@ dev_cv_setup <- function(training_data,
     dplyr::mutate(cv_splits = purrr::map(common_seed, function(x) {
       set.seed(x)
       rsample::group_vfold_cv(training_data,
-                              group = source_id_number,
+                              group = group_var,
                               v = num_folds)
     }))
 
