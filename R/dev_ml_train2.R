@@ -132,7 +132,7 @@ dev_ml_train2 <- function(cv_setup,
       # return aggregated outputs for this workflow/seed/bag
       # Binding models from the same seed/bag combination
       return(list(
-        models = dplyr::bind_rows(purrr::map(out_2, "model")),
+        #models = dplyr::bind_rows(purrr::map(out_2, "model")),
         pred_assess = dplyr::bind_rows(purrr::map(out_2, "pred_assess"))
       ))
     },
@@ -144,7 +144,7 @@ dev_ml_train2 <- function(cv_setup,
   }
 
   list(
-    fitted_models = purrr::map(out, "models"),
+    #fitted_models = purrr::map(out, "models"),
     train_probabilities = dplyr::bind_rows(purrr::map(out, "pred_assess"))
   )
 }
