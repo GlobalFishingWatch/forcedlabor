@@ -17,7 +17,7 @@
 #' offenders to predict on. If NULL (default), then only predict on the training set
 #' @return an object with predicted values and fitted models
 #'
-#' @importFrom furrr future_pmap furrr_options
+#' @importFrom furrr future_map2
 #' @importFrom future cluster
 #' @importFrom future multicore
 #' @importFrom future multisession
@@ -27,7 +27,7 @@
 #' @importFrom parallelly makeClusterPSOCK
 #' @importFrom parallelly availableCores
 #' @importFrom purrr map
-#' @importFrom purrr pmap
+#' @importFrom purrr map2
 #' @importFrom purrr pluck
 #' @importFrom rsample analysis
 #' @importFrom rsample assessment
@@ -47,8 +47,7 @@ ml_train_predict <- function(fl_rec,
                              down_sample_ratio,
                              parallel_plan = "multicore",
                              free_cores = 1,
-                             prediction_df = NULL,
-                             save_dir = "models") {
+                             prediction_df = NULL) {
 
   # Setting up the parallelization
   if (parallel_plan == "multicore") {
@@ -81,13 +80,9 @@ ml_train_predict <- function(fl_rec,
     # Make predictions for all CV folds and hyperparameters
     # Run this in parallel, so that each bag is processed on a parallel worker
     dplyr::mutate(predictions =
-                    furrr::future_pmap(list(.data$fl_recipe,
-                                            .data$common_seed,
-                                            .data$bag), # previously future_map2, now pmap to map 3 inputs
-                                       function(x, y, bag) # added .data$bag as third mapped input
-                                       {
-                                         if (!"themis" %in% loadedNamespaces())
-                                           requireNamespace("themis", quietly = TRUE) # ensure themis registered on workers (fixing error)
+                    furrr::future_map2(.data$fl_recipe,
+                                       .data$common_seed,
+                                       function(x, y) {
                                          # Ensure all bags look the same
                                          set.seed(y)
                                          # specifying the workflow with the model, recipe for data and how the
@@ -110,27 +105,15 @@ ml_train_predict <- function(fl_rec,
                                              assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
                                            dplyr::select(-.data$splits) |>
                                            dplyr::mutate(predictions =
-                                                           purrr::pmap(list(analysis,
-                                                                            assessment,
-                                                                            id), # was map2 now pmap for 3 inputs
-                                                                       function(ind_anal,ind_assess, fold_id) # include id (fold_id)
-                                                                       {
-                                                                         if (!"themis" %in% loadedNamespaces())
-                                                                           requireNamespace("themis", quietly = TRUE) # ensure themis registered on workers (fixing error)
-
+                                                           purrr::map2(analysis,
+                                                                       assessment,
+                                                                       function(ind_anal,ind_assess) {
                                                                          # Setting seed for seed sampling inside fit
                                                                          set.seed(y)
                                                                          # fit model to analysis data
                                                                          tmp_model <-
                                                                            workflows:::fit.workflow(object = cv_predictions_workflow,
                                                                                                     ind_anal)
-
-                                                                         file_name <- file.path(                       # added filepath to save models with unique names
-                                                                           save_dir,
-                                                                           paste0("rf_seed", y, "_bag", bag, "_", fold_id, ".rds")
-                                                                         )
-                                                                         saveRDS(tmp_model, file_name)
-
                                                                          # Predict over assessment data using fit
                                                                          tmp_pred_assess <-
                                                                            workflows:::predict.workflow(object = tmp_model,
@@ -176,14 +159,20 @@ ml_train_predict <- function(fl_rec,
 
                                          return(cv_predictions)
                                        },
-                                       .options = furrr::furrr_options(seed = TRUE, packages = c("themis")))) |>
+                                       .options = furrr::furrr_options(seed = TRUE))) |>
+
     # Remove unnecessary columns
     dplyr::select(-.data$recipe_seed, -.data$fl_recipe) |>
     tidyr::unnest(.data$predictions)
+
+
 
   if (parallel_plan == "psock") {
     parallel::stopCluster(cl)
   }
 
+
+
   return(models_pred = train_pred_proba)
+
 }
