@@ -133,7 +133,7 @@ dev_ml_train2 <- function(cv_setup,
       # Binding models from the same seed/bag combination
       return(list(
         #models = dplyr::bind_rows(purrr::map(out_2, "model")),
-        pred_assess <<- purrr::map(out_2, "pred_assess")#dplyr::bind_rows()
+        pred_assess <- purrr::map(out_2, "pred_assess")#dplyr::bind_rows()
       ))
     },
     .options = furrr::furrr_options(seed = TRUE, packages = c("themis"))
