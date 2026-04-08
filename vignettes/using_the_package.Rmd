@@ -47,7 +47,7 @@ Steps 9 and 10 are additional steps for assessing model performance and fairness
 
 ```{r workflow, echo=FALSE, out.width="100%"}
 
-img <- normalizePath(file.path("vignettes", "fig01_model_workflow.png"), mustWork = TRUE)
+img <- "fig01_model_workflow.png"
 knitr::include_graphics(img, rel_path = FALSE)
 
 ```
