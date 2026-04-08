@@ -143,8 +143,8 @@ dev_ml_train2 <- function(cv_setup,
     parallel::stopCluster(cl)
   }
 
-  list(
+  #list(#GM: comment out
     #fitted_models = purrr::map(out, "models"),
-    train_probabilities = dplyr::bind_rows(purrr::map(out, "pred_assess"))
-  )
+    train_probabilities = purrr::map(out, "pred_assess")#dplyr::bind_rows() #GM: to remove dplyr::bind_rows
+  #)#GM: comment out
 }
