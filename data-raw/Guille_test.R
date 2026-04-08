@@ -13,7 +13,7 @@ load(file=file.path(ddir,"fl_training.rda"))
 dim(fl_training)
 
 # devtools::load_all()
-devtools::install_github("GlobalFishingWatch/forcedlabor@guille-dev")
+#devtools::install_github("GlobalFishingWatch/forcedlabor@guille-dev")
 #library(forcedlabor)
 #data("fl_training")
 
@@ -48,13 +48,15 @@ oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
 
 
 # Guille´s functions ------------------------------------------------------
-#source("./R/dev_ml_tune.R")
-#source("./R/dev_cv_setup.R")
-#source("./R/dev_bag_downsample.R")
-#source("./R/dev_ml_train.R")
-#source("./R/dev_ml_load.R")
-#source("./R/dev_ml_predict.R")
-#source("./R/dev_ml_hyperpar.R")
+source("./R/dev_ml_tune.R")
+source("./R/dev_cv_setup.R")
+source("./R/dev_cv_setup2.R")
+source("./R/dev_bag_downsample.R")
+source("./R/dev_ml_train.R")
+source("./R/dev_ml_train2.R")
+source("./R/dev_ml_load.R")
+source("./R/dev_ml_predict.R")
+source("./R/dev_ml_hyperpar.R")
 
 
 #--------- First we tune model hyperparameters:
@@ -85,18 +87,40 @@ hyper_pars<-forcedlabor::dev_ml_hyperpar(tune_test)
 # ml_train: train and predict over the test set. Return each fitted model and the predicted df of scores over the test set
 
 tictoc::tic()
-cv_df<- forcedlabor::dev_cv_setup(training_data = fl_training,
+cv_df<- dev_cv_setup(training_data = fl_training,
                      num_folds = 5,
                      num_bags = 2,
                      num_seeds = 2,
                      fl_rec = rf_setup$rf_recipe,
                      rf_spec = rf_setup$rf_spec,
                      down_sample_ratio = 1)
-train_test <- forcedlabor::dev_ml_train(cv_setup = cv_df,
+tictoc::toc()
+
+tictoc::tic()
+cv_df2<- dev_cv_setup2(training_data = fl_training,
+                                  num_folds = 5,
+                                  num_bags = 2,
+                                  num_seeds = 2,
+                                  fl_rec = rf_setup$rf_recipe,
+                                  rf_spec = rf_setup$rf_spec,
+                                  down_sample_ratio = 1)
+tictoc::toc()
+
+tictoc::tic()
+train_test <- dev_ml_train(cv_setup = cv_df,
                             free_cores = free_cores,
                             parallel_plan = parallel_plan,
                             save_dir = "./models/test")
-tictoc::toc() #6.773 sec elapsed # 250 sec for 5 bags
+tictoc::toc()
+
+tictoc::tic()
+train_test2 <- dev_ml_train2(cv_setup = cv_df2,
+                             rf_spec = rf_setup$rf_spec,
+                             free_cores = free_cores,
+                             parallel_plan = parallel_plan,
+                             save_dir = "./models/test")
+tictoc::toc()
+
 
 loaded_models <- forcedlabor::dev_ml_load(cv_setup = cv_df,
                              save_dir = "./models/test")
