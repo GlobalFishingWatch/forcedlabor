@@ -129,7 +129,7 @@ dev_ml_train2 <- function(cv_setup,
       )
 
       return(list(
-        pred_assess <- purrr::map(out_2, "pred_assess")
+        pred_assess = purrr::map(out_2, "pred_assess")
       ))
     }
   )
