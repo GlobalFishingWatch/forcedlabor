@@ -40,14 +40,12 @@ dev_cv_setup2 <- function(training_data,
 
   # Run all common_seeds
   # GM: probably merge dev_bag_downsample with this pipe
-  bag_runs <- common_seed_tibble |>
+  down_bags <- common_seed_tibble |>
     tidyr::crossing(tibble::tibble(bag = seq(num_bags))) |>
     dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) |>
-    dplyr::mutate(counter = dplyr::row_number())
-
-  down_bags<-dev_bag_downsample(bag_runs = bag_runs,
-                                fl_rec = fl_rec,
-                                down_sample_ratio = down_sample_ratio)
+    dplyr::mutate(counter = dplyr::row_number()) |>
+    dev_bag_downsample(fl_rec = fl_rec,
+                       down_sample_ratio = down_sample_ratio)
 
   ## Cross Validation
   # Ensure there is no splitting across source_id across analysis and assessment

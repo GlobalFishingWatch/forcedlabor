@@ -224,9 +224,9 @@ for the analysis and assessment datasets
 
 ```{r cv_splits}
 num_folds <- 5 #5
-num_bags <- 2 #5 
+num_bags <- 10
 down_sample_ratio <- 1
-num_common_seeds <- 2 #3 
+num_common_seeds <- 3 
 ```
 
 
@@ -300,17 +300,38 @@ by a factor
     the default would require
 
 ```{r rf_setup}
-rf_setup<-dev_rf_setup(training_data = fl_training,
+features_model_characteristics <- c("gear", "engine_power_kw", "tonnage_gt",
+                                    "length_m")
+features_model_movement <- c("position_messages", "hours", "fishing_hours",
+                             "average_daily_fishing_hours",
+                             "fishing_hours_foreign_eez",
+                             "fishing_hours_high_seas",
+                             "max_distance_from_shore_km",
+                             "max_distance_from_port_km",
+                             "number_encounters",
+                             "number_forced_labor_encounters",
+                             "average_encounter_duration_hours", 
+                             "gaps_12_hours",
+                             "average_off_distance_from_port_km",
+                             "average_off_distance_from_shore_km",
+                             "average_gap_days", 
+                             "average_gap_km",
+                             "number_foreign_port_visits",
+                             "number_loitering_events",
+                             "average_loitering_duration_hours",
+                             "average_voyage_duration_hours", 
+                             "number_voyages")
+rf_setup <- dev_rf_setup(training_data = fl_training,
                       y = "known_offender", #response
-                      x = colnames(fl_training)[colnames(fl_training) != "known_offender"],
+                      x = c(features_model_characteristics, features_model_movement),
                       id = "indID",
                       dont_use = c("flag_region", "known_non_offender"),
                       control = "source_id_number",
                       corr_threshold = 0.75,
                       rf_trees = 500,
-                      rf_mtry = 1,
-                      rf_min_n = 15,
-                      rf_reg_factor = 0.5)
+                      rf_mtry = 5,
+                      rf_min_n = 10,
+                      rf_reg_factor = 1)
 ```
 
 #### Parallelization strategy
@@ -333,7 +354,7 @@ if (parallel_plan == "multisession") {
   utils::globalVariables("multisession")
 }
 free_cores <- 4 # add more if you need to do many things at the same time
-oopts <- options(future.globals.maxSize = 10200*1024^2)  ## 15 GB
+oopts <- options(future.globals.maxSize = 70*1e9)  ## 15 GB
 # options(future.globals.maxSize = 50 * 1024 ^ 3)
 ```
 
@@ -346,13 +367,16 @@ set, we can now use the package functions to fit models and generate scores.
 ### 4. Setting up the cross-validation (using `dev_cv_setup`)
 
 ```{r cv_setup}
-cv_df<- dev_cv_setup(training_data = fl_training,
+
+tictoc::tic()
+cv_df <- dev_cv_setup2(training_data = fl_training,
                      num_folds = num_folds,
                      num_bags = num_bags,
-                     num_seeds = down_sample_ratio,
+                     num_seeds = num_common_seeds,
                      fl_rec = rf_setup$rf_recipe,
                      rf_spec = rf_setup$rf_spec,
                      down_sample_ratio = down_sample_ratio)
+tictoc::toc()
 ```
 
 
@@ -370,10 +394,12 @@ assessment rows and the `fitted_models`. If a directory is specified, fitted mod
 
 ```{r ml_train}
 tictoc::tic()
-trained_models <- dev_ml_train(cv_setup = cv_df,
-                           free_cores = free_cores,
+trained_models <- dev_ml_train2(cv_setup = cv_df,
+                                rf_spec = rf_setup$rf_spec,# this
+                                free_cores = free_cores,
                            parallel_plan = parallel_plan,
-                           save_dir = NULL)#"../models/test")
+                           save_dir = "test")
+
 tictoc::toc() 
 ```
 

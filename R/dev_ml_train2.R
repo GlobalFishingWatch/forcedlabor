@@ -25,7 +25,7 @@ dev_ml_train2 <- function(cv_setup,
                           rf_spec,
                          free_cores,
                          parallel_plan,
-                         save_dir=NULL){
+                         save_dir = NULL) {
 
   # Setting up the parallelization
   if (parallel_plan == "multicore") {
@@ -43,7 +43,7 @@ dev_ml_train2 <- function(cv_setup,
 
   # creating directory if provided
   if (!is.null(save_dir)) {
-    if (dir.exists(save_dir) == FALSE){
+    if (dir.exists(save_dir) == FALSE) {
       dir.create(save_dir)
     }
   } else{
@@ -51,18 +51,17 @@ dev_ml_train2 <- function(cv_setup,
   }
 
   out <- furrr::future_pmap(
-    list(
+      list(
       purrr::map(cv_setup, "seed"),
       purrr::map(cv_setup, "bag"),
       purrr::map(cv_setup, "recipe"),
       purrr::map(cv_setup, "cv_folds")
     ),
-    function(seed, bag, recipe, folds_tbl){
+    .options = furrr::furrr_options(seed = TRUE, chunk_size = 1),
+    .f = function(seed, bag, recipe, folds_tbl) {
       # Ensure all bags look the same
       set.seed(seed)
 
-      # if (!"themis" %in% loadedNamespaces())
-      #   requireNamespace("themis", quietly = TRUE)
       workflow <- workflows::workflow() |>
         workflows::add_model(rf_spec) |>
         workflows::add_recipe(recipe)
@@ -71,9 +70,8 @@ dev_ml_train2 <- function(cv_setup,
         list(
           folds_tbl$splits,
           folds_tbl$id
-        ),
-        function(split, fold_id){
-
+          ),
+        function(split, fold_id) {
           # reproducible within each outer future worker
           set.seed(seed)
 
@@ -91,7 +89,7 @@ dev_ml_train2 <- function(cv_setup,
             NA_character_
           }
 
-          if(!is.null(save_dir)) {
+          if (!is.null(save_dir)) {
             saveRDS(tmp_model, file_path)
           }
 
@@ -110,7 +108,8 @@ dev_ml_train2 <- function(cv_setup,
             )
 
           #GM: to free RAM
-          rm(ind_anal, ind_assess)
+          rm(ind_anal, ind_assess, tmp_model)
+          gc()
 
           model_info = tibble::tibble(
             model_id = model_id,
@@ -119,7 +118,7 @@ dev_ml_train2 <- function(cv_setup,
             fold_id = fold_id,
             file_path = file_path,
             saved_to_disk = !is.null(save_dir),
-            model_object = list(tmp_model)
+            #model_object = list(tmp_model)
           )
 
           return(list(
@@ -129,14 +128,10 @@ dev_ml_train2 <- function(cv_setup,
         }
       )
 
-      # return aggregated outputs for this workflow/seed/bag
-      # Binding models from the same seed/bag combination
       return(list(
-        #models = dplyr::bind_rows(purrr::map(out_2, "model")),
-        pred_assess <- purrr::map(out_2, "pred_assess")#dplyr::bind_rows()
+        pred_assess <- purrr::map(out_2, "pred_assess")
       ))
-    },
-    .options = furrr::furrr_options(seed = TRUE, packages = c("themis"))
+    }
   )
 
   if (parallel_plan == "psock") {
