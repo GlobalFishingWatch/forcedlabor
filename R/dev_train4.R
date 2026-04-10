@@ -41,6 +41,7 @@ dev_ml_train4 <- function(x = tlist[[1]],
           # fit the model
           tmp_model <- workflows:::fit.workflow(workflow, ind_anal)
           #saving if provided
+
           if (!is.null(save_dir)) {
             dir.create(save_dir, showWarnings = F)
             # model_id (for loading) and file path
@@ -51,6 +52,7 @@ dev_ml_train4 <- function(x = tlist[[1]],
           } else {
             print("Skipping model saving")
           }
+          # prediction ind_assess
           tmp_pred_assess <- workflows:::predict.workflow(
             object = tmp_model,
             new_data = ind_assess,
@@ -64,6 +66,7 @@ dev_ml_train4 <- function(x = tlist[[1]],
               bag = b,
               id = z
             )
+          # prediction new_data
           if (!is.null(new_data)) {
             tmp_pred <- workflows:::predict.workflow(object = tmp_model,
                                                      new_data = new_data,
@@ -89,8 +92,7 @@ dev_ml_train4 <- function(x = tlist[[1]],
       )
       return(list(
         train_probabilities = purrr::map(out2, "pred_assess"),
-        pred_probabilities = if_else(!is.null(get0("tmp_pred")), purrr::map(out2, "pred_new"), NA_character_)
-      ))
+        pred_probabilities = purrr::map(out2, "pred_new"))
+      )
     }
-
 
