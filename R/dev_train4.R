@@ -83,13 +83,13 @@ dev_ml_train4 <- function(x = tlist[[1]],
 
           return(list(
             pred_assess = tmp_pred_assess,
-            pred_new = tmp_pred
+            pred_new = get0("tmp_pred")
           ))
         }
       )
       return(list(
         train_probabilities = purrr::map(out2, "pred_assess"),
-        pred_probabilities = purrr::map(out2, "pred_new")
+        pred_probabilities = if_else(!is.null(get0("tmp_pred")), purrr::map(out2, "pred_new"), NULL)
       ))
     }
 
