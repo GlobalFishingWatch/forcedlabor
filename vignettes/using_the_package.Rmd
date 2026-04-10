@@ -347,14 +347,15 @@ We parallelize the bag x seed training across local CPU cores using `future`
 
 ```{r parallel_plan}
 ## parallelization strategy
+parallel_plan <- "multicore" # multisession if running from RStudio, or
 parallel_plan <- "multisession" # multisession if running from RStudio, or
 # multicore if from Linux, Mac and plain R, or
 # psock if multisession is not working well and you need to try something else
 if (parallel_plan == "multisession") {
   utils::globalVariables("multisession")
 }
-free_cores <- 4 # add more if you need to do many things at the same time
-oopts <- options(future.globals.maxSize = 70*1e9)  ## 15 GB
+free_cores <- 5 # add more if you need to do many things at the same time
+oopts <- options(future.globals.maxSize = 15*1e9)  ## 15 GB
 # options(future.globals.maxSize = 50 * 1024 ^ 3)
 ```
 
@@ -394,11 +395,12 @@ assessment rows and the `fitted_models`. If a directory is specified, fitted mod
 
 ```{r ml_train}
 tictoc::tic()
-trained_models <- dev_ml_train2(cv_setup = cv_df,
+trained_models <- dev_ml_train3(cv_setup = cv_df,
                                 rf_spec = rf_setup$rf_spec,# this
                                 free_cores = free_cores,
                            parallel_plan = parallel_plan,
-                           save_dir = "test")
+                           new_data = fl_predict,#prediction_df, #
+                           save_dir = NULL)
 
 tictoc::toc() 
 ```
@@ -422,6 +424,7 @@ hold‑out dataset (if passed via prediction_df)
 ```{r train_proba_output}
 
 dplyr::glimpse(trained_models$train_probabilities)
+dplyr::glimpse(trained_models$pred_probabilities)
 
 ```
 
@@ -438,17 +441,17 @@ Previously trained models can be loaded from your local disk using `dev_ml_load`
 Fitted models can be used to predict over new data using `dev_ml_predict`. 
 
 ```{r rf_predictions}
-predictions = dev_ml_predict(trained_models = trained_models$fitted_models,
-                             new_data = fl_predict,
-                             free_cores = free_cores,
-                             parallel_plan = parallel_plan)
+#predictions <- dev_ml_predict(trained_models = trained_models,
+ #                            
+  #                           free_cores = free_cores,
+   #                          parallel_plan = parallel_plan)
 ```
 
 `predictions` contains the same columns as `trained_models$train_probabilities`, but `holdout` takes value of 1, as predictions were generated over an external dataset not used for training.
 
 
 ```{r rf_predictions_output}
-dplyr::glimpse(predictions)
+
 ```
 
 ### 9. Density-based algorithm for classification threshold (using `ml_classification`)
@@ -478,17 +481,17 @@ are within the range
 
 
 ```{r classif_res, warning=FALSE}
-#tictoc::tic()
-#classif_res <- ml_classification(data = trained_models$train_probabilities,
-#                                 steps = 1000,
-#                                 plotting = FALSE,
-#                                 filepath = NULL,
-#                                 threshold = seq(0, .99, by = 0.01),
-#                                 eps = 0.01,
-#                                 confidence_levels = TRUE,
-#                                 parallel_plan = parallel_plan,
-#                                 free_cores = free_cores)
-#tictoc::toc()
+tictoc::tic()
+classif_res <- ml_classification(data = bind_rows(trained_models$train_probabilities),
+                                 steps = 1000,
+                                 plotting = FALSE,
+                                 filepath = NULL,
+                                 threshold = seq(0, .99, by = 0.01),
+                                 eps = 0.01,
+                                 confidence_levels = TRUE,
+                                 parallel_plan = parallel_plan,
+                                 free_cores = free_cores)
+tictoc::toc()
 ```
 
 
@@ -527,11 +530,11 @@ proportion of  negative cases predicted by the model as negatives
 
 ```{r perf_metrics}
 
-#tictoc::tic()
-#perf_metrics <- forcedlabor::ml_perf_metrics(data = classif_res$pred_conf)
-#tictoc::toc()
+tictoc::tic()
+perf_metrics <- forcedlabor::ml_perf_metrics(data = classif_res$pred_conf)
+tictoc::toc()
 
-#print(perf_metrics)
+print(perf_metrics)
 
 
 ```
@@ -560,19 +563,19 @@ regions
 
 # Recall by flag_region
 
-#region_lookup <- fl_training %>%
-#  distinct(indID, flag_region)
+region_lookup <- fl_training %>%
+  distinct(indID, flag_region)
 
-#classif_res$pred_conf %>%
-#  left_join(region_lookup, by = "indID") %>%
-#  group_by(flag_region) %>%
-#  mutate(
-#    known_offender = factor(as.character(known_offender), levels = c("0","1")),
-#    pred_class     = factor(as.character(pred_class),     levels = c("0","1"))
-#  ) %>%
-#  recall(truth = known_offender, 
-#         estimate = pred_class, event_level = "second") %>%
-#  select(flag_region, .estimate)
+classif_res$pred_conf %>%
+ left_join(region_lookup, by = "indID") %>%
+ group_by(flag_region) %>%
+ mutate(
+   known_offender = factor(as.character(known_offender), levels = c("0","1")),
+   pred_class     = factor(as.character(pred_class),     levels = c("0","1"))
+ ) %>%
+ recall(truth = known_offender,
+        estimate = pred_class, event_level = "second") %>%
+ select(flag_region, .estimate)
 ```
 
 

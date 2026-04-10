@@ -21,9 +21,11 @@
 #' @export
 #'
 
+
 dev_ml_train2 <- function(cv_setup,
                           rf_spec,
                          free_cores,
+                         new_data = NULL,
                          parallel_plan,
                          save_dir = NULL) {
 
@@ -41,14 +43,6 @@ dev_ml_train2 <- function(cv_setup,
                  workers = parallel::detectCores() - free_cores, gc = TRUE)
   }
 
-  # creating directory if provided
-  if (!is.null(save_dir)) {
-    if (dir.exists(save_dir) == FALSE) {
-      dir.create(save_dir)
-    }
-  } else{
-    print("Skipping model saving")
-  }
 
   out <- furrr::future_pmap(
       list(
@@ -57,7 +51,7 @@ dev_ml_train2 <- function(cv_setup,
       purrr::map(cv_setup, "recipe"),
       purrr::map(cv_setup, "cv_folds")
     ),
-    .options = furrr::furrr_options(seed = TRUE, chunk_size = 1),
+    .options = furrr::furrr_options(seed = TRUE),
     .f = function(seed, bag, recipe, folds_tbl) {
       # Ensure all bags look the same
       set.seed(seed)
@@ -74,23 +68,21 @@ dev_ml_train2 <- function(cv_setup,
         function(split, fold_id) {
           # reproducible within each outer future worker
           set.seed(seed)
-
           ind_anal   <- rsample::analysis(split)
           ind_assess <- rsample::assessment(split)
 
           # fit the model
           tmp_model <- workflows:::fit.workflow(workflow, ind_anal)
 
-          # model_id (for loading) and file path
-          model_id <- paste0("rf_seed", seed, "_bag", bag, "_", fold_id)
-          file_path <- if (!is.null(save_dir)) {
-            file.path(save_dir, paste0(model_id, ".rds"))
-          } else {
-            NA_character_
-          }
-
+          #saving if provided
           if (!is.null(save_dir)) {
+            dir.create(save_dir, showWarnings = F)
+            # model_id (for loading) and file path
+            model_id <- paste0("rf_seed", seed, "_bag", bag, "_", fold_id)
+            file_path <- file.path(save_dir, paste0(model_id, ".rds"))
             saveRDS(tmp_model, file_path)
+          } else {
+            "Skipping model saving"
           }
 
           tmp_pred_assess <- workflows:::predict.workflow(
@@ -98,7 +90,7 @@ dev_ml_train2 <- function(cv_setup,
             new_data = ind_assess,
             type = "prob"
           ) |>
-            dplyr::select(.data$.pred_1) |>
+            dplyr::select(.pred_1) |>
             dplyr::bind_cols(ind_assess[c("indID","known_offender","known_non_offender")]) |>
             dplyr::mutate(
               holdout = 0,
@@ -106,30 +98,48 @@ dev_ml_train2 <- function(cv_setup,
               bag = bag,
               id = fold_id
             )
+          if (!is.null(new_data)) {
+            tmp_pred <- workflows:::predict.workflow(object = tmp_model,
+                                           new_data = new_data,
+                                           type = "prob") |>
+              dplyr::select(.pred_1) |>
+              # Add columns to prediction data
+              # (might be a warning about levels in source_id but it's not important,
+              # we won't use that column anyway)
+              dplyr::bind_cols(new_data[c("indID", "known_offender", "known_non_offender")]) |>
+              dplyr::mutate(holdout = 1,
+                            common_seed = seed,
+                            bag = bag,
+                            id = fold_id)
+          }
+
+
 
           #GM: to free RAM
           rm(ind_anal, ind_assess, tmp_model)
           gc()
 
-          model_info = tibble::tibble(
-            model_id = model_id,
-            seed = seed,
-            bag = bag,
-            fold_id = fold_id,
-            file_path = file_path,
-            saved_to_disk = !is.null(save_dir),
-            #model_object = list(tmp_model)
-          )
+          # model_info = tibble::tibble(
+          #   model_id = model_id,
+          #   seed = seed,
+          #   bag = bag,
+          #   fold_id = fold_id,
+          #   file_path = file_path,
+          #   saved_to_disk = !is.null(save_dir),
+          #   #model_object = list(tmp_model)
+          #)
 
           return(list(
-            model = model_info,
-            pred_assess = tmp_pred_assess
+            #model = model_info,
+            pred_assess = tmp_pred_assess,
+            pred_new = tmp_pred
           ))
         }
       )
 
       return(list(
-        pred_assess = purrr::map(out_2, "pred_assess")
+        pred_assess = purrr::map(out_2, "pred_assess"),
+        pred_new = purrr::map(out_2, "pred_new")
       ))
     }
   )
@@ -138,8 +148,9 @@ dev_ml_train2 <- function(cv_setup,
     parallel::stopCluster(cl)
   }
 
-  #list(#GM: comment out
+  list(
     #fitted_models = purrr::map(out, "models"),
-    train_probabilities = purrr::map(out, "pred_assess")#dplyr::bind_rows() #GM: to remove dplyr::bind_rows
-  #)#GM: comment out
+    train_probabilities = purrr::map(out, "pred_assess"),
+    pred_probabilities = purrr::map(out, "pred_new")
+  )
 }
