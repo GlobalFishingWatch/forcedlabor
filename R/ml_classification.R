@@ -87,10 +87,10 @@ ml_classification <- function(data,
     # tidyr::unnest(.data$predictions) |>  # from having a list per cell to
     # a tibble per cell
     # tidyr::unnest(.data$prediction_output) |> # everything is a regular tibble
-    dplyr::group_by(dplyr::across(c(.data$indID,
-                                    .data$holdout,
-                                    .data$known_offender,
-                                    .data$known_non_offender))) |>  # group by everything
+    dplyr::group_by(dplyr::across(c(indID,
+                                    holdout,
+                                    known_offender,
+                                    known_non_offender))) |>  # group by everything
     # except .pred_1 (only common_seed and indID actually matter but the other
     # don't make a diff in the calculations and it's useful to have them for
     # later)
@@ -98,7 +98,7 @@ ml_classification <- function(data,
                      .groups = "drop")
 
   avgscore_df_noneg <- avgscore_df |>
-    dplyr::filter(.data$holdout == 0)
+    dplyr::filter(holdout == 0)
 
   # getting a calibrated threshold based on the dedpul algorithm
 

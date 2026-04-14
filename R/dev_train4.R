@@ -19,7 +19,7 @@
 #' @import workflows
 #'
 #' @export
-dev_ml_train4 <- function(x = tlist[[1]],
+dev_ml_train4 <- function(cv_setup = cv_df[[1]],
                           rf_spec = rf_setup$rf_spec,
                           new_data = NULL,
                           save_dir = NULL) {
