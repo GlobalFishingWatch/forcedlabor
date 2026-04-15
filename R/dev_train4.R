@@ -24,10 +24,10 @@ dev_ml_train4 <- function(cv_setup = cv_df[[1]],
                           new_data = NULL,
                           save_dir = NULL) {
    #bag, recipe, folds_tbl) {
-      seed <- x$seed
-      bag <- x$bag
-      recipe <- x$recipe
-      folds_tbl <- x$folds_tbl
+      seed <- cv_setup$seed
+      bag <- cv_setup$bag
+      recipe <- cv_setup$recipe
+      folds_tbl <- cv_setup$folds_tbl
       workflow <- workflows::workflow() |>
         workflows::add_model(rf_spec) |>
         workflows::add_recipe(recipe)
