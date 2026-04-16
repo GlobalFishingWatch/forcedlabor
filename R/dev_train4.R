@@ -2,19 +2,14 @@
 #'
 #' @param cv_setup List containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers. Output from ?cv_setup
 #' @param rf_spec Random forest classifier specifications
-#' @param free_cores Number of available cores. Add more if you need to do many things at the same time
-#' @param parallel_plan Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)
 #' @param save_dir Directory to save trained models otherwise skip saving when NULL
+#' @param new_data
 #'
 #' @returns List containing:
 #' Trained random forest models
 #' Tibble with predicted probabilities
 #'
 #' @importFrom dplyr bind_cols bind_rows mutate select
-#' @importFrom furrr future_pmap furrr_options
-#' @importFrom future cluster multicore multisession plan
-#' @importFrom parallel detectCores stopCluster
-#' @importFrom parallelly availableCores makeClusterPSOCK
 #' @importFrom purrr map pmap
 #' @import workflows
 #'
@@ -27,7 +22,7 @@ dev_ml_train4 <- function(cv_setup = cv_df[[1]],
       seed <- cv_setup$seed
       bag <- cv_setup$bag
       recipe <- cv_setup$recipe
-      folds_tbl <- cv_setup$folds_tbl
+      folds_tbl <- cv_setup$cv_folds
       workflow <- workflows::workflow() |>
         workflows::add_model(rf_spec) |>
         workflows::add_recipe(recipe)
