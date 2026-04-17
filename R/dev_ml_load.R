@@ -37,14 +37,14 @@ dev_ml_load <- function(cv_setup,
 
           # Reconstruct the model_id and file_path
           model_id <- paste0("rf_seed", seed, "_bag", bag, "_", fold_id)
-          file_path <- file.path(save_dir, paste0(model_id, ".rds"))
+          file_path <- file.path(save_dir, paste0(model_id, ".qs2"))
           file_exists <- file.exists(file_path)
 
           # Stop if missing and fail_on_missing is TRUE
           if (!file_exists) {
             stop("Required model file not found: ", file_path)
           } else {
-            model <- readRDS(file_path)
+            model <- qs2::qs_read(file_path)
           }
 
           # Return in the same format as training

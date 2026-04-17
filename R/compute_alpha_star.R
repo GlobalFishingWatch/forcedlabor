@@ -43,7 +43,9 @@
 #'
 #'
 
-compute_alpha_star <- function(r, steps = 1000, plotting = FALSE,
+compute_alpha_star <- function(r,
+                               steps = 1000,
+                               plotting = FALSE,
                                filename = NULL) {
 
   D_alpha <- compute_D(r, steps)

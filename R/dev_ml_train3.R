@@ -5,6 +5,7 @@
 #' @param free_cores Number of available cores. Add more if you need to do many things at the same time
 #' @param parallel_plan Parallelization strategy Options: multisession (if running RStudio), multicore (Linux, Mac and plain R) or psock (if multisession is not working well and you need to try something else)
 #' @param save_dir Directory to save trained models otherwise skip saving when NULL
+#' @param new_data Optional. Test dataset, not used for model training.
 #'
 #' @returns List containing:
 #' Trained random forest models

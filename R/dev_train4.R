@@ -3,7 +3,7 @@
 #' @param cv_setup List containing cv_folds (analysis/assessment), model workflow and seed/bag identifiers. Output from ?cv_setup
 #' @param rf_spec Random forest classifier specifications
 #' @param save_dir Directory to save trained models otherwise skip saving when NULL
-#' @param new_data
+#' @param new_data Optional. Test dataset, not used for model training.
 #'
 #' @returns List containing:
 #' Trained random forest models
@@ -11,6 +11,7 @@
 #'
 #' @importFrom dplyr bind_cols bind_rows mutate select
 #' @importFrom purrr map pmap
+#' @importFrom qs2 qs_save
 #' @import workflows
 #'
 #' @export
@@ -18,7 +19,7 @@ dev_ml_train4 <- function(cv_setup = cv_df[[1]],
                           rf_spec = rf_setup$rf_spec,
                           new_data = NULL,
                           save_dir = NULL) {
-   #bag, recipe, folds_tbl) {
+
       seed <- cv_setup$seed
       bag <- cv_setup$bag
       recipe <- cv_setup$recipe
@@ -42,10 +43,8 @@ dev_ml_train4 <- function(cv_setup = cv_df[[1]],
             # model_id (for loading) and file path
             model_id <- paste0("rf_seed", y, "_bag", b, "_", z)
             print(paste("saving", model_id))
-            file_path <- file.path(save_dir, paste0(model_id, ".rds"))
-            saveRDS(tmp_model, file_path)
-          } else {
-            print("Skipping model saving")
+            file_path <- file.path(save_dir, paste0(model_id, ".qs2"))
+            qs2::qs_save(tmp_model, file_path)
           }
           # prediction ind_assess
           tmp_pred_assess <- workflows:::predict.workflow(

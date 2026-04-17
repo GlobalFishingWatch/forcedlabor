@@ -1,3 +1,5 @@
+#' Setting up data structure
+#'
 #' Setting up the data structure to train the RF model based on a number of folds, bags and common seeds.
 #' If tune is set to TRUE, is provided  return..., otherwise return analysis/assessment splits and model workflows
 #' across CV folds and bags.
@@ -32,14 +34,12 @@ dev_cv_setup2 <- function(training_data,
                          fl_rec,
                          rf_spec,
                          down_sample_ratio,
-                         group_var = "source_id_number")
-{
+                         group_var = "source_id_number") {
 
   common_seed_tibble <- tibble::tibble(common_seed =
                                          seq(1:num_seeds) * 101)
 
   # Run all common_seeds
-  # GM: probably merge dev_bag_downsample with this pipe
   down_bags <- common_seed_tibble |>
     tidyr::crossing(tibble::tibble(bag = seq(num_bags))) |>
     dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) |>
@@ -50,7 +50,6 @@ dev_cv_setup2 <- function(training_data,
   ## Cross Validation
   # Ensure there is no splitting across source_id across analysis and assessment
   # data sets.  Need to make separate splits for each seed.
-  # GM: training_data MUST have a source_id_number
   cv_splits_all <- common_seed_tibble |>
     dplyr::mutate(cv_splits = purrr::map(common_seed, function(x) {
       set.seed(x)
@@ -59,13 +58,11 @@ dev_cv_setup2 <- function(training_data,
                               v = num_folds)
     }))
 
-  out<-purrr:::pmap(list(down_bags$fl_recipe,
+  out <- purrr::pmap(list(down_bags$fl_recipe,
                          down_bags$common_seed,
-                         down_bags$bag), # previously future_map2, now pmap to map 3 inputs
-                    function(x, y, .bag) # added .data$bag as third mapped input
-                    {
-
-                      # Ensure all bags look the same
+                         down_bags$bag),
+                     function(x, y, .bag) {
+                       # Ensure all bags look the same
                       set.seed(y)
 
                       cv_folds <- cv_splits_all |>

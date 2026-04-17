@@ -1,12 +1,23 @@
 Package: forcedlabordev
-Title: forced labor machine learning algorithms
-Version: 0.0.0.9000
-Authors@R:
+Title: Global Fishing Watch forced labor risk machine learning algorithms
+Version: 1.0
+Authors@R: c(
     person("Rocío", "Joo", , "rocio.joo@globalfishingwatch.org",
     role = c("aut", "cre"),
-    comment = c(ORCID = "0000-0003-0319-4210"))
+    comment = c(ORCID = "0000-0003-0319-4210")),
+    person("Guillermo", "Martín González", , 
+    "guillermo.martin@globalfishingwatch.org", role = c("aut")),
+    person("Laura", "Osborne", , "laura.osborne@globalfishingwatch.org",
+          role = c("aut")),      
+    person("Andrea", "Sánchez-Tapia", , "andrea.sanchez-tapia@globalfishingwatch.org",
+          role = c("aut"),
+          comment = c(ORCID = "0000-0002-3521-4338")),
+              person("Gavin", "McDonald", , "gmcdonald@bren.ucsb.edu",
+          role = c("aut"),
+          comment = c(ORCID = "0000-0001-7624-5985"))
+    )
 Description: forcedlabor is an R package containing the codes to identify forced labor on fishing vessels via a machine learning algorithm trained on a combination of known forced labor cases and AIS data predictors.
-License: GPL (>= 3)
+License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
@@ -21,6 +32,7 @@ Imports:
     parallelly,
     parsnip,
     purrr,
+    qs2,
     recipes,
     rlang,
     rsample,
@@ -45,4 +57,4 @@ BugReports: https://github.com/GlobalFishingWatch/forcedlabor/issues
 LazyData: true
 VignetteBuilder: knitr
 Depends: 
-    R (>= 3.5)
+    R (>= 4.1)
