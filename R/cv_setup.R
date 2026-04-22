@@ -12,9 +12,9 @@
 #' @param down_sample_ratio See `under_ratio` [themis::step_downsample()].
 #' Downsampling ratio to balance the number of positive and unlabelled cases.
 #' Defaults to 1 (1:1 ratio)
-#' @param group_var from [rsample::group_vfold_cv()] A variable in data (single
-#' character or name) used for grouping observations with the same value to
-#' assign cases to train or test sets within a fold.
+#' @param group_var A variable in data (single character or name) used for
+#' grouping observations with the same value to assign cases to train or test
+#' sets within a fold using [rsample::group_vfold_cv()].
 #'
 #' @returns List object containing cv_folds (analysis/assessment), model
 #' workflow and seed/bag identifiers

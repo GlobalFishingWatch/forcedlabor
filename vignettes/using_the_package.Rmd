@@ -1,12 +1,12 @@
 ---
-title: "Using the package"
+title: "Forced labor risk workflow on a sample dataset"
 output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 bibliography: references.bib
 vignette: >
-  %\VignetteIndexEntry{Using the package}
+  %\VignetteIndexEntry{Forced labor risk workflow on a sample dataset}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}"
 execute:
@@ -21,8 +21,6 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
-options(rmarkdown.html_vignette.check_title = FALSE)
-
 devtools::load_all()
 ```
 
@@ -31,10 +29,28 @@ devtools::load_all()
 `forcedlabor` is an R package to train a positive–unlabeled (PU) model to 
 detect fishing vessels exhibiting behaviors or characteristics consistent 
 with forced-labor offenders. 
-Features (movement patterns and vessel characteristics) are computed from 
-AIS data.
-We have used Global Fishing Watch’s AIS data pipeline. 
-The package assumes access to AIS (or other vessel tracking) data.
+
+Positive cases (known offenders) come from confirmed reports and sanctions 
+from human rights organizations. The criteria to classify forced labor cases
+come from the International Labour Organization.
+
+In this classification problem, there are very few confirmed reports of the 
+absence of forced labor. The immense majority of vessels are not inspected, 
+and even those that are, are not inspected regularly in time , so their . This 
+has several implications: 
+
+- The model needs to use _vessel-year_ as a unit for forced labor cases. 
+Vessels may exhibit different behaviors throughout their history and be reported
+on certain years, with no confirmation about their behavior in other years. 
+- We have very few confirmed negative cases, "known non-offenders" which are not used to train the model (but are expected to be classified as low-risk at the end of the modeling phase, as part of the specificity calculation). We cannot share 
+  - __Unlabeled cases__ which are vessel-year combinations for which we have no information (no evidence  of being a known offender but also no evidence of them being non-offenders). 
+
+
+Features to describe movement patterns and vessel characteristics are computed from 
+AIS data and Global Fishing Watch’s AIS and identity pipelines.
+
+The vessel gears included in the model are trawlers, longlines and purse seines. 
+
 
 ```{r setup, eval = F}
 library(forcedlabor)
@@ -50,7 +66,7 @@ Steps 12 and 13 are additional steps for assessing model performance and fairnes
 
 ```{r workflow, echo=FALSE, out.width="100%"}
 here <- here::here()
-img <- (glue::glue(here,"/vignettes/fig01_model_workflow.png"))
+img <- (glue::glue(here, "/vignettes/fig01_model_workflow.png"))
 knitr::include_graphics(img, rel_path = FALSE)
 
 ```
@@ -65,7 +81,7 @@ vessels stay together, rotating the assessment fold per seed.
 3. Fit random forests: for each fold × bag × seed, fit an RF using the 
 recipe/spec, with 1:1 down-sampling applied to the analysis split.
 4. Predicted scores: Collect out-of-fold probabilities `.pred_1` via 
-package function `dev_ml_train()`
+package function `ml_train()`
 5. Predictions from all seeds: pool the `.pred_1` scores across all seeds and 
 bags into `train_pred_proba`
 6. Density-based threshold (DEDPUL): `ml_classification()` function averages 
@@ -79,7 +95,7 @@ variation across seeds × bags.
 Additional steps:
 
 9. Model performance: Report recall on assessment folds and specificity 
-if a holdout is provided using package function `ml_perf_metrics`
+if a holdout is provided using package function `ml_perf_metrics()`
 10. Fairness tests: Evaluate recall parity across non-modeled groups 
 (e.g., flag_region, gear) as post-hoc diagnostics
 
@@ -89,29 +105,31 @@ if a holdout is provided using package function `ml_perf_metrics`
 Before using the package functions we load the training data
 and prep the model
 
-### 1. Data
+### Data
 
-#### Training data
+#### Train and test data
 
-The model starts with loading the required training data (`fl_training`).
+The model starts with loading the required training data (`training_df`).
 This table contains AIS-derived data at a yearly scale for positive vessels 
 (`known_offender = 1`) and unlabeled vessels (`known_offender = 0`). 
+
+We will split this example dataset into two dataframes: `training_df` will be used to train the model and `holdout_df` will be used to evaluate the model.
 
 
 ```{r load_data}
 data("fl_training")
 
 set.seed(101)
-rows_pred <- sample(1:dim(fl_training)[1], size = 1000)
-fl_predict <- fl_training[rows_pred,]
-fl_training <- fl_training[-rows_pred,]
+rows_pred <- sample(seq_len(nrow(fl_training)), size = 1000)
+training_df <- fl_training[-rows_pred, ]
+holdout_df <- fl_training[rows_pred, ]
 ```
 
 
 ##### Positives: offenders
 
-The training dataset includes a list of positive (known_offender = 1) 
-and unlabeled (known_offender = 0) vessels and their corresponding outputs 
+The training dataset includes a list of positive (`known_offender = 1`) 
+and unlabeled (`known_offender = 0`) vessels and their corresponding features 
 from tracking data. 
 
 Our offender data has come from external reports on forced labor. 
@@ -119,13 +137,13 @@ In many cases the exact date of the offence is unclear, hence why
 we work on a yearly scale. 
 Reported cases were then matched to AIS data. 
 
-##### (Optional) holdout dataset via `prediction_df`
+##### (Optional) holdout dataset via `holdout_df`
 
-- The model is not trained on negative cases (`known_non_offender = 1`)
-- If negative data is available, it can be used in the `prediction_df` to 
-calculate specificity (but `prediction_df` is not used in training)
-- If non-offender data is not available, `prediction_df` should be set to `NULL` 
-    - Note that when `prediction_df` = `NULL`, specificity cannot be computed
+- The original model is not trained on negative cases (`known_non_offender = 1`) 
+- If negative data is available, it can be used in the `holdout_df` to 
+calculate specificity (but `holdout_df` is not used in training)
+- If non-offender data is not available, `holdout_df` should be set to `NULL` 
+    - Note that when `holdout_df` = `NULL`, specificity cannot be computed
 
 
 ##### Unlabeled
@@ -180,7 +198,7 @@ Long voyages and infrequent port returns reduce monitoring and limit crew
 opportunities to report or exit abusive conditions.
 
 ```{r training_data}
-dplyr::glimpse(fl_training)
+dplyr::glimpse(training_df)
 ```
 
 ### 2. (Same) 5-fold Cross Validation
@@ -213,7 +231,7 @@ train and test.
   - To reduce the weight of the unlabeled cases in the model, we randomly 
   downsampled them in the training set with a 1-1 ratio, i.e. the number of 
   positive and unlabeled cases used for training would be equal
-  - This downsampling ratio is used later by the `dev_ml_train` (Step 4)
+  - This downsampling ratio is used later by `ml_train()` (Step 4)
   but is included here for clarity
 - `num_common_seeds <- 3` sets 3 random seeds 
   - Setting up common seeds to use anywhere that uses random numbers.
@@ -223,14 +241,14 @@ for the analysis and assessment datasets
 
 
 ```{r cv_splits}
-num_folds <- 5 #5
+num_folds <- 5
 num_bags <- 10
 down_sample_ratio <- 1
-num_common_seeds <- 3 
+num_common_seeds <- 3
 ```
 
 
-### 3. Specifying the random forest model (using `dev_rf_setup`) 
+### 3. Specifying the random forest model (using `rf_setup()`) 
 
 There are two aspect to define as part of our random forest model, the model recipe, and the model specifications.
 
@@ -243,12 +261,12 @@ Here we set the roles of the different variables that will be used.
 - `known_offender` is set as the **outcome** i.e. the target we predict
 - `indID` is set as an "id" value and is not used as a predictor
 - `known_non_offender` is not used as a predictor (role "dont_use")
-    - if available, use `known_non_offender`  in a holdout `prediction_df` to 
+    - if available, use `known_non_offender`  in a holdout `holdout_df` to 
       compute specificity later
 - `source_id_number` is set as "control"
 - `flag_region` is not used as a predictor (role "dont_use")
       - it is reserved for post-hoc fairness checks 
-- **Predictors**: All remaining variables in `fl_training` are treated as 
+- **Predictors**: All remaining variables in `training_df` are treated as 
 predictors
 
 **Variable preprocessing**
@@ -300,9 +318,13 @@ by a factor
     the default would require
 
 ```{r rf_setup}
-features_model_characteristics <- c("gear", "engine_power_kw", "tonnage_gt",
+features_model_characteristics <- c("gear",
+                                    "engine_power_kw",
+                                    "tonnage_gt",
                                     "length_m")
-features_model_movement <- c("position_messages", "hours", "fishing_hours",
+features_model_movement <- c("position_messages",
+                             "hours",
+                             "fishing_hours",
                              "average_daily_fishing_hours",
                              "fishing_hours_foreign_eez",
                              "fishing_hours_high_seas",
@@ -310,28 +332,29 @@ features_model_movement <- c("position_messages", "hours", "fishing_hours",
                              "max_distance_from_port_km",
                              "number_encounters",
                              "number_forced_labor_encounters",
-                             "average_encounter_duration_hours", 
+                             "average_encounter_duration_hours",
                              "gaps_12_hours",
                              "average_off_distance_from_port_km",
                              "average_off_distance_from_shore_km",
-                             "average_gap_days", 
+                             "average_gap_days",
                              "average_gap_km",
                              "number_foreign_port_visits",
                              "number_loitering_events",
                              "average_loitering_duration_hours",
-                             "average_voyage_duration_hours", 
+                             "average_voyage_duration_hours",
                              "number_voyages")
-rf_setup <- dev_rf_setup(training_data = fl_training,
-                      y = "known_offender", #response
-                      x = c(features_model_characteristics, features_model_movement),
-                      id = "indID",
-                      dont_use = c("flag_region", "known_non_offender"),
-                      control = "source_id_number",
-                      corr_threshold = 0.75,
-                      rf_trees = 500,
-                      rf_mtry = 5,
-                      rf_min_n = 10,
-                      rf_reg_factor = 1)
+rf_setup <- rf_setup(training_data = training_df,
+                     y = "known_offender",
+                     x = c(features_model_characteristics,
+                           features_model_movement),
+                     id = "indID",
+                     dont_use = c("flag_region", "known_non_offender"),
+                     control = "source_id_number",
+                     corr_threshold = 0.75,
+                     rf_trees = 500,
+                     rf_mtry = 5,
+                     rf_min_n = 10,
+                     rf_reg_factor = 1)
 ```
 
 #### Parallelization strategy
@@ -347,7 +370,6 @@ We parallelize the bag x seed training across local CPU cores using `future`
 
 ```{r parallel_plan}
 ## parallelization strategy
-parallel_plan <- "multicore" # multisession if running from RStudio, or
 parallel_plan <- "multisession" # multisession if running from RStudio, or
 # multicore if from Linux, Mac and plain R, or
 # psock if multisession is not working well and you need to try something else
@@ -355,8 +377,7 @@ if (parallel_plan == "multisession") {
   utils::globalVariables("multisession")
 }
 free_cores <- 5 # add more if you need to do many things at the same time
-oopts <- options(future.globals.maxSize = 15*1e9)  ## 15 GB
-# options(future.globals.maxSize = 50 * 1024 ^ 3)
+oopts <- options(future.globals.maxSize = 1*1e9)
 ```
 
 
@@ -370,7 +391,7 @@ set, we can now use the package functions to fit models and generate scores.
 ```{r cv_setup}
 
 tictoc::tic()
-cv_df <- cv_setup(training_data = fl_training,
+cv_df <- cv_setup(training_data = training_df,
                   num_folds = num_folds,
                   num_bags = num_bags,
                   num_seeds = num_common_seeds,
@@ -381,129 +402,100 @@ tictoc::toc()
 ```
 
 
-### 5. Predict scores (using `dev_ml_train`)
+### 5. Predict scores (using `ml_train()`)
 
-- `dev_ml_train`: fits a Random Forest for each fold x bag x seed using
+- `ml_train()`: fits a Random Forest for each fold x bag x seed using
 the previous recipe, specification steps and cross-validation setup
 - It applies a downsampling ratio of 1:1 to the training set
 - This step returns list of  `train_probabilities` a table with probabilities for
 assessment rows and the `fitted_models`. If a directory is specified, fitted models are saved accordingly. 
 
-### 6. Predictions from all seeds (using `dev_ml_train`)
+### 6. Predictions from all seeds (using `ml_train()`)
 
-- `dev_ml_train` also pools scores across all seeds and bags
+- `ml_train()` also pools scores across all seeds and bags
+
+The function is written to receive a single element of the output of `cv_setup()`, `cv_df` in this example. So a single run (with 5 folds) 
+could be generated like this:
+
+```{r, eval = FALSE}
+tictoc::tic()
+one_trained_model <- ml_train(cv_setup = cv_df[[1]],
+                              rf_spec = rf_setup$rf_spec,
+                              holdout = holdout_df)
+tictoc::toc()
+```
+
+This allows us to loop effectively across all seeds and bags, using `for` loops or `purrr::map()`, and parallelize in remote machines. 
+In this example, let's use `purrr::map()`.
+
+Note that the use of `holdout` is optional. If omitted, `ml_train()` will produce predictions for the training data only, if added, it will create predictions for new data, not used in model training.
 
 ```{r ml_train}
 tictoc::tic()
-trained_models <- dev_ml_train3(cv_setup = cv_df,
-                                rf_spec = rf_setup$rf_spec,# this
-                                free_cores = free_cores,
-                           parallel_plan = parallel_plan,
-                           new_data = fl_predict,#prediction_df, #
-                           save_dir = NULL)
+trained_models <- purrr::map(.x = cv_df,
+                             ~ml_train(rf_spec = rf_setup$rf_spec,
+                                       holdout = holdout_df))
 
-tictoc::toc() 
+tictoc::toc()
+
 ```
 
-`trained_models$train_probabilities` contains the following:
+The output of `ml_train()` is another list of length `bags x seeds` (in this case, `r num_common_seeds * num_bags`).
+Each element of this list contains two tibble objects with the results for a single `fold`: `train_probabilities` and `pred_probabilities` __if `holdout` was included__.
 
-- `common_seed`: which randomization seed was used to generate both your 
-down‑sampling and your CV splits for this batch of runs
-- `bag`: which down‑sample “bag” this row belongs to
-- `id`: the fold identifier from your CV split
-- `.pred_1`: the model’s predicted probability that this particular row is 
-positive
+Both tibbles include the following columns: 
+
+- `.pred_1`: the model’s predicted probability
 - `indID`: a unique vessel identifier
 - `known offender`: if the vessel is positive
-- `known non offender`: if the vessel is negative
-- `holdout`:  0 as they result from one of your CV assessment folds, if 1, an external 
-hold‑out dataset (if passed via prediction_df)
-    - If you have no `prediction_df = NULL`, all rows have `holdout == 0`
+- `known non offender`: if the vessel is negative (unavailable in this dataset)
+- `holdout`:  0 in the case of `train_probabilities` and 1 in the case of `pred_probabilities`, if available (i.e., if `holdout` was passed to the function).
 
+Let's extract both lists and create a single dataframe for all
 
 ```{r train_proba_output}
 
-dplyr::glimpse(trained_models$train_probabilities)
-dplyr::glimpse(trained_models$pred_probabilities)
-
+train_probabilities_all <- purrr::map(trained_models, "train_probabilities") |> bind_rows()
+pred_probabilities_all <- purrr::map(trained_models, "pred_probabilities") |> bind_rows()
+prob_all <- bind_rows(pred_probabilities_all,
+                      train_probabilities_all)
+head(prob_all)
 ```
 
-### 7. Loading previously fitted models 
 
-Previously trained models can be loaded from your local disk using `dev_ml_load` based on your cross-validation setup (output of `dev_cv_setup`).
+### 7. Density-based algorithm for classification threshold (using `ml_classification()`)
 
-```{r load_models}
-#loaded_models <- dev_ml_load(cv_setup = cv_df,
-#                             save_dir = system.file("./models/test", package = "forcedlabor"))
-```
-
-### 8. Predicting over new data 
-Fitted models can be used to predict over new data using `dev_ml_predict`. 
-
-```{r rf_predictions}
-#predictions <- dev_ml_predict(trained_models = trained_models,
- #                            
-  #                           free_cores = free_cores,
-   #                          parallel_plan = parallel_plan)
-```
-
-`predictions` contains the same columns as `trained_models$train_probabilities`, but `holdout` takes value of 1, as predictions were generated over an external dataset not used for training.
-
-
-```{r rf_predictions_output}
-
-```
-
-### 9. Density-based algorithm for classification threshold (using `ml_classification`)
-
-`ml_classification` aggregates `.pred_1` per `indID` to `pred_mean`, 
+`ml_classification()` aggregates `.pred_1` per `indID` to `pred_mean`, 
 estimates α (upper bound on positives in the unlabeled set), 
 and chooses a calibrated threshold `t` so the share of 
 predicted positives ≈ α (DEDPUL).
 
-See [@ivanov_2020] for more details on the DEDPUL algorithm. 
-
-**Tunable args:**
-
-- `steps`: when setting `steps` there is a balance between too few steps 
-overpredicting positives, and too many slowing down for little gain
-  - `steps` must be at least 3 in order to calculate the second derivative
-- `threshold` and `eps`: these are used to set the threshold for what is
-considered positive or negative
-  - `threshold` sets the list of candidate cut‑offs to see what gets us 
-  closest to the alpha, so that the threshold of classification t is such that 
-  the proportion of positive predictions is equal (or approximately equal) to α
-  - `eps` is the range from this alpha that we are willing to accept
-    - setting `eps` too low will likely return an error, as none of the 
-    candidates
-are within the range
-- If `plotting = TRUE`, a D vs. alpha plot is generated
+See [@ivanov_2020] for more details on the DEDPUL algorithm.
 
 
 ```{r classif_res, warning=FALSE}
 tictoc::tic()
-classif_res <- ml_classification(data = bind_rows(trained_models$train_probabilities),
+classif_res <- ml_classification(data = prob_all,
                                  steps = 1000,
                                  plotting = FALSE,
                                  filepath = NULL,
                                  threshold = seq(0, .99, by = 0.01),
-                                 eps = 0.01,
-                                 confidence_levels = TRUE,
-                                 parallel_plan = parallel_plan,
-                                 free_cores = free_cores)
+                                 eps = 0.1,
+                                 confidence_levels = TRUE
+                                 )
 tictoc::toc()
 ```
 
 
-### 10. Classification (using `ml_classification`)
+### Calibrated threshold
 
-- Within `ml_classification` we apply the calibrated threshold `t` to 
+- Within `ml_classification()` we apply the calibrated threshold `t` to 
 each vessel’s mean score:  
   `pred_class = 1` if `pred_mean > t`, else `0`  
 - This produces the binary `pred_class`
 
 
-### 11. Confidence for each vessel year classification (using `ml_classification`)
+### Confidence for each vessel year classification
 
 - The `confidence` value indicates how consistently a vessel’s 
 score falls on the same side of `t` across seeds × bags
@@ -513,25 +505,25 @@ classification.
 
 
 ```{r classif_res_pred_conf}
-#dplyr::glimpse(classif_res$pred_conf)
+dplyr::glimpse(classif_res$pred_conf)
 ```
 
 ## Additional steps: Performance and Fairness
 
 
-### 12. Performance: Recall and specificity (using `ml_perf_metrics`)
+### Performance: Recall and specificity (using `ml_perf_metrics()`)
 
 The performance of the model is evaluated through:
 
 - `recall`: the proportion of positive cases predicted by the model
 as positive
-- `specificity`: if a `prediction_df` has been provided, the
+- `specificity`: if a `holdout_df` has been provided, the
 proportion of  negative cases predicted by the model as negatives
 
 ```{r perf_metrics}
 
 tictoc::tic()
-perf_metrics <- forcedlabor::ml_perf_metrics(data = classif_res$pred_conf)
+perf_metrics <- ml_perf_metrics(data = classif_res$pred_conf)
 tictoc::toc()
 
 print(perf_metrics)
@@ -563,22 +555,50 @@ regions
 
 # Recall by flag_region
 
-region_lookup <- fl_training %>%
+region_lookup <- training_df  |>
   distinct(indID, flag_region)
 
-classif_res$pred_conf %>%
- left_join(region_lookup, by = "indID") %>%
- group_by(flag_region) %>%
+classif_res$pred_conf |> 
+ left_join(region_lookup, by = "indID") |> 
+ group_by(flag_region) |> 
  mutate(
    known_offender = factor(as.character(known_offender), levels = c("0","1")),
    pred_class     = factor(as.character(pred_class),     levels = c("0","1"))
- ) %>%
- recall(truth = known_offender,
-        estimate = pred_class, event_level = "second") %>%
+ ) |> 
+ yardstick::recall(truth = known_offender,
+        estimate = pred_class, event_level = "second")  |> 
  select(flag_region, .estimate)
 ```
 
 
+# Alternative workflows with `ml_load()` and `ml_predict()`
+
+Function `ml_train()` can train the model and create predictions both for the training data and for a new dataset. 
+When new cases arrive (a new `holdout_df` that needs predictions to be generated), an alternative workflow can be:
+
+- saving the models to disk using the `save_dir` parameter of `ml_train()`
+- load the previously fitted models to the R session using `ml_load()`
+- create a new set of predictions using function `ml_predict()`
+
+### Loading previously fitted models 
+
+Previously trained models can be loaded from your local disk using `ml_load()` based on your cross-validation setup (output of `cv_setup()`).
+
+
+```{r load_models, eval = FALSE}
+loaded_models <- ml_load(cv_setup = cv_df,
+                         save_dir = "test")
+```
+
+### Predicting over new data 
+
+Fitted models can be used to predict over new data using `ml_predict()`. 
+
+```{r rf_predictions , eval = FALSE}
+predictions <- ml_predict(trained_models = trained_models)
+```
+
+`predictions` contains the same columns as `trained_models$train_probabilities`, but `holdout` takes value of 1, as predictions were generated over an external dataset not used for training.
 
 # References
 

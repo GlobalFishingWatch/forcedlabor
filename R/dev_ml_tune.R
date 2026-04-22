@@ -30,34 +30,18 @@
 #'
 #' @export
 #'
-dev_ml_tune <- function(training_data,
-                        fl_rec,
-                        rf_spec,
-                        num_folds,
-                        num_bags,
-                        num_seeds,
-                        down_sample_ratio,
-                        tune_parameters = NULL,
-                        grid = NULL,
-                        parallel_plan,
-                        free_cores){
-
-  # Setting up the parallelization
-  if (parallel_plan == "multicore") {
-    future::plan(future::multicore,
-                 workers = parallel::detectCores() - free_cores, gc = TRUE)
-    # the garbage collector will run automatically (and asynchronously) on the
-    # workers to minimize the memory footprint of the worker.
-  } else if (parallel_plan == "psock") {
-    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
-    future::plan(future::cluster, workers = cl)
-  } else {
-    future::plan(future::multisession,
-                 workers = parallel::detectCores() - free_cores, gc = TRUE)
-  }
-
-  common_seed_tibble <- tibble::tibble(common_seed =
-                                         seq(1:num_seeds) * 101)
+ml_tune <- function(training_data,
+                    fl_rec,
+                    rf_spec,
+                    num_folds,
+                    num_bags,
+                    num_seeds,
+                    down_sample_ratio,
+                    tune_parameters = NULL,
+                    grid = NULL,
+                    parallel_plan,
+                    free_cores) {
+  common_seed_tibble <- tibble::tibble(common_seed =  seq(1:num_seeds) * 101)
 
   # Run all common_seeds
   # GM: probably merge dev_bag_downsample with this pipe

@@ -47,11 +47,11 @@ ml_classification <- function(data,
   # only if plotting is TRUE
 
   if (plotting == TRUE) {
-    if (dir.exists(filepath) == FALSE) dir.create(filepath, showWarnings = F)
+    if (dir.exists(filepath) == FALSE) dir.create(filepath, showWarnings = FALSE)
     filename <- paste0(filepath, paste0("D_alpha_common_seed.png"))
   } else {
     filename <- NULL
-    }
+  }
 
   avgscore_df <- data |>
     dplyr::group_by(dplyr::across(c(indID,
@@ -74,9 +74,10 @@ ml_classification <- function(data,
 
   # classification
   predclass_df <- avgscore_df |>
-    dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
-                                               threshold_res$thres_star,
-                                               function(x, y) {ifelse(x > y, 1, 0)}))
+    dplyr::mutate(
+      pred_class = purrr::map2_dbl(.data$pred_mean,
+                                   threshold_res$thres_star,
+                                   function(x, y) {ifelse(x > y, 1, 0)}))
 
   if (confidence_levels) {
 
@@ -85,10 +86,11 @@ ml_classification <- function(data,
       split_df <- predclass_df |>
         split(predclass_df$indID)
 
-      confidence_list <- furrr::future_map(.x = split_df,
-                          .f = \(x) conf_estimate(predicted_df = x,
-                                                  data = data,
-                                                  threshold = threshold_res$thres_star))
+      confidence_list <- furrr::future_map(
+        .x = split_df,
+        .f = \(x) conf_estimate(predicted_df = x,
+                                data = data,
+                                threshold = threshold_res$thres_star))
 
       count_null <- sum(lengths(confidence_list) == 0)
 
@@ -104,7 +106,7 @@ ml_classification <- function(data,
       predclass_df <- dplyr::left_join(predclass_df, confidence_df, by = dplyr::join_by(indID))
 
     } else {
-      message('Not enough data to compute confidence levels')
+      message("Not enough data to compute confidence levels")
 
     }
   } else {

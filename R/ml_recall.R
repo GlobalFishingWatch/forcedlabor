@@ -1,6 +1,3 @@
-
-
-
 #' Computes recall for assessment sets
 #'
 #' @description Computes recall, for assessment sets (in model versions that

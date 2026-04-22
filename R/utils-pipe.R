@@ -1,8 +1,14 @@
 
-globalVariables(c("known_offender")) # from data("fl_training")
-globalVariables(c("pred_class"))
 globalVariables(c(".estimate"))
-globalVariables(c("source_id_number")) # from data("fl_training")
-globalVariables(c("indID")) # from data("fl_training")
-globalVariables(c("common_seed")) # named in common_seed_tibble
-globalVariables(c("id")) # from rsample::group_vfold_cv
+globalVariables(c(".pred_1"))
+globalVariables(c("bag_downsample"))
+globalVariables(c("common_seed"))
+globalVariables(c("cv_df"))
+globalVariables(c("holdout"))
+globalVariables(c("id"))
+globalVariables(c("indID"))
+globalVariables(c("known_non_offender"))
+globalVariables(c("known_offender"))
+globalVariables(c("pred_class"))
+globalVariables(c("rf_setup"))
+globalVariables(c("source_id_number"))
