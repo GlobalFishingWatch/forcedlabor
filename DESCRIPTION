@@ -1,4 +1,4 @@
-Package: forcedlabordev
+Package: forcedlabor
 Title: Global Fishing Watch forced labor risk machine learning algorithms
 Version: 1.0
 Authors@R: c(
@@ -16,7 +16,7 @@ Authors@R: c(
           role = c("aut"),
           comment = c(ORCID = "0000-0001-7624-5985"))
     )
-Description: forcedlabor is an R package containing the codes to identify forced labor on fishing vessels via a machine learning algorithm trained on a combination of known forced labor cases and AIS data predictors.
+Description: forcedlabor is an R package containing the codes to classify the risk of forced labor on fishing vessels via a machine learning algorithm trained on a combination of known forced labor cases and AIS data predictors.
 License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

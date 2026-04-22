@@ -15,9 +15,7 @@
 #' @param eps accepted difference (tolerance) between alpha and the actual
 #' proportion of positives for a given threshold
 #' @param confidence_levels Boolean to compute confidence levels
-#' @param parallel_plan type of parallelization to run (multicore, multisession,
-#' or psock - this last one may need calling libraries inside)
-#' @param free_cores number of free cores to leave out of parallelization
+#'
 #' @return tibble with classification and calibrated threshold used for them
 #'
 #' @references
@@ -29,10 +27,6 @@
 #'
 #' @importFrom furrr future_map
 #' @importFrom future plan
-#' @importFrom parallel detectCores
-#' @importFrom parallel stopCluster
-#' @importFrom parallelly makeClusterPSOCK
-#' @importFrom parallelly availableCores
 #' @importFrom purrr map2_dbl
 #' @importFrom EnvStats ebeta
 #' @importFrom stats pbeta
@@ -47,53 +41,23 @@ ml_classification <- function(data,
                               filepath = NULL,
                               threshold = seq(0, .99, by = 0.01),
                               eps = 0.01,
-                              confidence_levels = TRUE,
-                              parallel_plan = "multicore",
-                              free_cores = 1) {
-
+                              confidence_levels = TRUE) {
 
   # first, checking if a good file name has been provided (the path exists)
   # only if plotting is TRUE
 
   if (plotting == TRUE) {
-    if (dir.exists(filepath) == FALSE)
-      stop("The directory to save the plot does not exist.")
-  }
-
-  # Setting up the parallelization
-  if (parallel_plan == "multicore") {
-    future::plan(future::multicore,
-                 workers = parallel::detectCores() - free_cores, gc = TRUE)
-    # the garbage collector will run automatically (and asynchronously) on the
-    # workers to minimize the memory footprint of the worker.
-  } else if (parallel_plan == "psock") {
-    cl <- parallelly::makeClusterPSOCK(parallelly::availableCores() - free_cores)
-    future::plan(future::cluster, workers = cl)
+    if (dir.exists(filepath) == FALSE) dir.create(filepath, showWarnings = F)
+    filename <- paste0(filepath, paste0("D_alpha_common_seed.png"))
   } else {
-    future::plan(future::multisession,
-                 workers = parallel::detectCores() - free_cores, gc = TRUE)
-  }
-  # options(future.globals.maxSize = 1000000000)
-
-  # unnesting the tibble inside the tibble
-  # scores_df <- data |>
-  # dplyr::select(.data$common_seed, .data$predictions) |>
-  # tidyr::unnest(.data$predictions) # |>  # from having a list per cell to
-  # # a tibble per cell
-  # tidyr::unnest(.data$predictions)
+    filename <- NULL
+    }
 
   avgscore_df <- data |>
-    # dplyr::select(.data$predictions) |>
-    # tidyr::unnest(.data$predictions) |>  # from having a list per cell to
-    # a tibble per cell
-    # tidyr::unnest(.data$prediction_output) |> # everything is a regular tibble
     dplyr::group_by(dplyr::across(c(indID,
                                     holdout,
                                     known_offender,
-                                    known_non_offender))) |>  # group by everything
-    # except .pred_1 (only common_seed and indID actually matter but the other
-    # don't make a diff in the calculations and it's useful to have them for
-    # later)
+                                    known_non_offender))) |>
     dplyr::summarize(pred_mean = mean(.data$.pred_1, na.rm = TRUE),
                      .groups = "drop")
 
@@ -101,14 +65,6 @@ ml_classification <- function(data,
     dplyr::filter(holdout == 0)
 
   # getting a calibrated threshold based on the dedpul algorithm
-
-  if (plotting == TRUE) {
-    filename <- paste0(filepath, paste0("D_alpha_common_seed.png"))
-  } else {
-    filename <- NULL
-  }
-
-
   threshold_res <- calibrated_threshold(data = avgscore_df_noneg,
                                         steps = steps,
                                         plotting = plotting,
@@ -119,22 +75,24 @@ ml_classification <- function(data,
   # classification
   predclass_df <- avgscore_df |>
     dplyr::mutate(pred_class = purrr::map2_dbl(.data$pred_mean,
-                                               threshold_res$thres_star, function(x, y) {
-                                                 ifelse(x > y, 1, 0)}))
+                                               threshold_res$thres_star,
+                                               function(x, y) {ifelse(x > y, 1, 0)}))
 
   if (confidence_levels) {
 
     if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2) {
 
-      confidence_list <- predclass_df |>
-        split(predclass_df$indID) |>
-        parallel::mclapply(FUN = conf_estimate, data = data,
-                           threshold = threshold_res$thres_star,
-                           mc.cores = parallel::detectCores() - free_cores)
+      split_df <- predclass_df |>
+        split(predclass_df$indID)
+
+      confidence_list <- furrr::future_map(.x = split_df,
+                          .f = \(x) conf_estimate(predicted_df = x,
+                                                  data = data,
+                                                  threshold = threshold_res$thres_star))
 
       count_null <- sum(lengths(confidence_list) == 0)
 
-      if (count_null > 0){
+      if (count_null > 0) {
         print(paste0("nulls: ", count_null))
         confidence_list <- confidence_list[lengths(confidence_list) != 0]
       }
@@ -144,33 +102,6 @@ ml_classification <- function(data,
                                   conf = confidence_vector)
 
       predclass_df <- dplyr::left_join(predclass_df, confidence_df, by = dplyr::join_by(indID))
-      #
-      #
-      #
-      #     Dataframe with a nullfile - list
-      #
-      #     Broken split
-      #
-      #     titi <- t( do.call(
-      #       cbind.data.frame, confidence))
-      #
-      #       #
-      #       #
-      #     confidence <-  t( do.call(
-      #       cbind.data.frame, parallel::mclapply( split(predclass_df, predclass_df$indID),
-      #               FUN = conf_estimate, data = data,
-      #               threshold = threshold_res$thres_star,
-      #               mc.cores = parallel::detectCores() - free_cores)))
-      #
-      #     # quitar nulos a una lista
-      #     # t y cbind.data.frame
-      #     # left join, reemplazando con NAs
-
-
-
-      # predclass_df$conf <- c(confidence)
-
-
 
     } else {
       message('Not enough data to compute confidence levels')
