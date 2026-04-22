@@ -11,9 +11,7 @@ ml_classification(
   filepath = NULL,
   threshold = seq(0, 0.99, by = 0.01),
   eps = 0.01,
-  confidence_levels = TRUE,
-  parallel_plan = "multicore",
-  free_cores = 1
+  confidence_levels = TRUE
 )
 }
 \arguments{
@@ -34,11 +32,6 @@ needed}
 proportion of positives for a given threshold}
 
 \item{confidence_levels}{Boolean to compute confidence levels}
-
-\item{parallel_plan}{type of parallelization to run (multicore, multisession,
-or psock - this last one may need calling libraries inside)}
-
-\item{free_cores}{number of free cores to leave out of parallelization}
 }
 \value{
 tibble with classification and calibrated threshold used for them
