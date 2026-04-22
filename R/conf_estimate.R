@@ -15,22 +15,21 @@
 
 conf_estimate <- function(predicted_df, data, threshold) {
 
-  options(warn = - 1)
+  options(warn = -1)
   predictions <- data$.pred_1[which(data$indID == predicted_df$indID)]
   if ((length(predictions) > 1 &&
        (all(predictions == 1) || all(predictions == 0))) ||
-      length(unique(predictions)) == 1)  {
+      length(unique(predictions)) == 1) {
     conf <- 1
   } else {
     # beta fitting
     beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
 
     if (predicted_df$pred_class == 1) {
-
-        conf <- stats::pbeta(q = threshold,
-                             shape1 = beta_par[1],
-                             shape2 = beta_par[2],
-                             lower.tail = FALSE)
+      conf <- stats::pbeta(q = threshold,
+                           shape1 = beta_par[1],
+                           shape2 = beta_par[2],
+                           lower.tail = FALSE)
     } else {
       conf <- stats::pbeta(q = threshold,
                            shape1 = beta_par[1],
@@ -39,5 +38,4 @@ conf_estimate <- function(predicted_df, data, threshold) {
     }
   }
   return(conf)
-
 }

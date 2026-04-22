@@ -21,7 +21,7 @@ monotonize <- function(r, y_u) {
 
   max_r <- 0
 
-  for (i in seq_len(length(r))) {
+  for (i in seq_along(r)) {
     if (y_u[i] > threshold_mon) {
       max_r <- max(r[i], max_r)
       r[i] <- max_r

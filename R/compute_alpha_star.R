@@ -57,12 +57,12 @@ compute_alpha_star <- function(r,
 
   alpha_n <- D2$alpha[which.max(D2$D_2)]
 
-  if (plotting == TRUE & is.null(filename) == FALSE) {
+  if (plotting == TRUE && is.null(filename) == FALSE) {
     ggplot2::ggplot(data = D_alpha, ggplot2::aes(x = .data$alpha, y = .data$D)) +
       ggplot2::geom_line() +
       ggplot2::geom_point() +
-      ggplot2::geom_point(ggplot2::aes(x = alpha_n, y =
-                                D_alpha$D[which.max(D2$D_2) + 1]),
+      ggplot2::geom_point(ggplot2::aes(x = alpha_n,
+                                       y = D_alpha$D[which.max(D2$D_2) + 1]),
                           size = 4, shape = 22, fill = "black") +
       ggplot2::theme_bw()
     ggplot2::ggsave(filename = filename)

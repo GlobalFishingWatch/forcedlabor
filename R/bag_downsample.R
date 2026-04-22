@@ -2,9 +2,9 @@
 #'
 #' @param bag_runs Tibble defining bag numbers and seeds
 #' @param fl_rec Model recipe
-#' @param down_sample_ratio See under_ratio in ?themis::step_downsample. To reduce the weight of the unlabeled cases in the model, we randomly
-#' downsampled them in the training set with a 1-1 ratio, i.e. the number of
-#' positive and unlabeled cases used for training would be equal
+#' @param down_sample_ratio See `under_ratio` [themis::step_downsample()].
+#' Downsampling ratio to balance the number of positive and unlabelled cases.
+#' Defaults to 1 (1:1 ratio)
 #'
 #' @returns Tibble with data recipe and downsample ratio.
 #'
@@ -12,9 +12,9 @@
 #' @importFrom purrr map
 #' @importFrom themis step_downsample
 
-dev_bag_downsample <- function(bag_runs,
-                               fl_rec,
-                               down_sample_ratio) {
+bag_downsample <- function(bag_runs,
+                           fl_rec,
+                           down_sample_ratio) {
   bag_runs |>
     dplyr::mutate(
       fl_recipe = purrr::map(.data$recipe_seed, function(x) {

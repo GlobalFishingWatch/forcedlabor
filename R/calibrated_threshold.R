@@ -48,7 +48,7 @@ calibrated_threshold <- function(data,
     dplyr::select(.data$pred_mean)
 
   # recursively search for the optimal threshold
-  for (i in rev(seq_len(length(threshold)))) {
+  for (i in rev(seq_along(threshold))) {
     thres_star <- threshold[i]
     sum_pred <- sum(data$pred_mean > thres_star)
     if (abs(sum_pred / dim(data)[1] - alpha) < eps) {
