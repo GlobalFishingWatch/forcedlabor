@@ -18,7 +18,7 @@ bag_downsample <- function(bag_runs,
   bag_runs |>
     dplyr::mutate(
       fl_recipe = purrr::map(.data$recipe_seed, function(x) {
-        fl_rec_down <- fl_rec |>
+      fl_rec |>
           themis::step_downsample(known_offender,
                                   under_ratio = down_sample_ratio,
                                   seed = x,

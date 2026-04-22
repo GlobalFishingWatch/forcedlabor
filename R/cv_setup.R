@@ -63,35 +63,18 @@ cv_setup <- function(training_data,
                           down_bags$common_seed,
                           down_bags$bag),
                      function(x, y, .bag) {
-
-
                        # Ensure all bags look the same
                        set.seed(y)
 
-                       # specifying the workflow with the model, recipe for data
-                       cv_predictions_workflow <-
-                         workflows::workflow() |>
-                         workflows::add_model(rf_spec) |>
-                         #GM: is this necessary here, or could be included later in ml_train once hyperparameters defined?
-                         workflows::add_recipe(x)
-
-                       # get the folds related to that common seed, train and predict
-                       cv_predictions <-
-                         cv_splits_all |>
+                       cv_folds <- cv_splits_all |>
                          dplyr::filter(.data$common_seed == y) |>
-                         purrr::pluck("cv_splits", 1) |>
-                         dplyr::mutate(# Create analysis dataset based on CV folds
-                           analysis = purrr::map(.data$splits, ~rsample::analysis(.x)),
-                           # Create assessment dataset based on CV folds
-                           assessment = purrr::map(.data$splits, ~rsample::assessment(.x))) |>
-                         dplyr::select(-.data$splits)
+                         purrr::pluck("cv_splits", 1)
 
                        return(
-                         list(
-                           workflow   = cv_predictions_workflow,
-                           cv_folds = cv_predictions,
-                           seed = y,
-                           bag = .bag)
+                         list(recipe = x,
+                              cv_folds = cv_folds,
+                              seed = y,
+                              bag = .bag)
                        )
                      })
 

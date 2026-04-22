@@ -365,18 +365,18 @@ oopts <- options(future.globals.maxSize = 15*1e9)  ## 15 GB
 Once the training data has been prepped and the model recipe and specifications
 set, we can now use the package functions to fit models and generate scores. 
 
-### 4. Setting up the cross-validation (using `dev_cv_setup`)
+### 4. Setting up the cross-validation (using `cv_setup`)
 
 ```{r cv_setup}
 
 tictoc::tic()
-cv_df <- dev_cv_setup2(training_data = fl_training,
-                     num_folds = num_folds,
-                     num_bags = num_bags,
-                     num_seeds = num_common_seeds,
-                     fl_rec = rf_setup$rf_recipe,
-                     rf_spec = rf_setup$rf_spec,
-                     down_sample_ratio = down_sample_ratio)
+cv_df <- cv_setup(training_data = fl_training,
+                  num_folds = num_folds,
+                  num_bags = num_bags,
+                  num_seeds = num_common_seeds,
+                  fl_rec = rf_setup$rf_recipe,
+                  rf_spec = rf_setup$rf_spec,
+                  down_sample_ratio = down_sample_ratio)
 tictoc::toc()
 ```
 
