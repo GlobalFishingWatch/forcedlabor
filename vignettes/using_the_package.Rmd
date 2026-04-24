@@ -215,7 +215,7 @@ case from the same forced labor report) in the same group.
 This means that vessels with the same `source_id_number` will either all be
 in training or all in test.
 We do this as two vessels from the same report are likely to have similar
-behaviors and characteristics, and so so when using one of them in the 
+behaviors and characteristics, and so when using one of them in the 
 training set, the model would likely
 perform well on the other one, an artificial effect of using related cases to 
 train and test.
