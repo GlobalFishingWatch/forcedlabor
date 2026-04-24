@@ -81,10 +81,10 @@ vessels stay together, rotating the assessment fold per seed.
 3. Fit random forests: for each fold × bag × seed, fit an RF using the 
 recipe/spec, with 1:1 down-sampling applied to the analysis split.
 4. Predicted scores: Collect out-of-fold probabilities `.pred_1` via 
-package function `ml_train()`
+package function `fl_train()`
 5. Predictions from all seeds: pool the `.pred_1` scores across all seeds and 
 bags into `train_pred_proba`
-6. Density-based threshold (DEDPUL): `ml_classification()` function averages 
+6. Density-based threshold (DEDPUL): `fl_classification()` function averages 
 scores to `pred_mean`, estimates alpha (α) on assessment data, and chooses a 
 calibrated threshold (t)
 7. Classification: Apply 't' to `pred_mean` to produce the binary label 
@@ -95,7 +95,7 @@ variation across seeds × bags.
 Additional steps:
 
 9. Model performance: Report recall on assessment folds and specificity 
-if a holdout is provided using package function `ml_perf_metrics()`
+if a holdout is provided using package function `fl_perf_metrics()`
 10. Fairness tests: Evaluate recall parity across non-modeled groups 
 (e.g., flag_region, gear) as post-hoc diagnostics
 
@@ -231,7 +231,7 @@ train and test.
   - To reduce the weight of the unlabeled cases in the model, we randomly 
   downsampled them in the training set with a 1-1 ratio, i.e. the number of 
   positive and unlabeled cases used for training would be equal
-  - This downsampling ratio is used later by `ml_train()` (Step 4)
+  - This downsampling ratio is used later by `fl_train()` (Step 4)
   but is included here for clarity
 - `num_common_seeds <- 3` sets 3 random seeds 
   - Setting up common seeds to use anywhere that uses random numbers.
@@ -248,7 +248,7 @@ num_common_seeds <- 3
 ```
 
 
-### 3. Specifying the random forest model (using `rf_setup()`) 
+### 3. Specifying the random forest model (using `fl_rfsetup()`) 
 
 There are two aspect to define as part of our random forest model, the model recipe, and the model specifications.
 
@@ -317,7 +317,7 @@ by a factor
     bring in a new predictor if it improves impurity by at least twice as much
     the default would require
 
-```{r rf_setup}
+```{r fl_rfsetup}
 features_model_characteristics <- c("gear",
                                     "engine_power_kw",
                                     "tonnage_gt",
@@ -343,18 +343,18 @@ features_model_movement <- c("position_messages",
                              "average_loitering_duration_hours",
                              "average_voyage_duration_hours",
                              "number_voyages")
-rf_setup <- rf_setup(training_data = training_df,
-                     y = "known_offender",
-                     x = c(features_model_characteristics,
-                           features_model_movement),
-                     id = "indID",
-                     dont_use = c("flag_region", "known_non_offender"),
-                     control = "source_id_number",
-                     corr_threshold = 0.75,
-                     rf_trees = 500,
-                     rf_mtry = 5,
-                     rf_min_n = 10,
-                     rf_reg_factor = 1)
+rf_setup <- fl_rfsetup(training_data = training_df,
+                       y = "known_offender",
+                       x = c(features_model_characteristics,
+                             features_model_movement),
+                       id = "indID",
+                       dont_use = c("flag_region", "known_non_offender"),
+                       control = "source_id_number",
+                       corr_threshold = 0.75,
+                       rf_trees = 500,
+                       rf_mtry = 5,
+                       rf_min_n = 10,
+                       rf_reg_factor = 1)
 ```
 
 #### Parallelization strategy
@@ -386,40 +386,40 @@ oopts <- options(future.globals.maxSize = 1*1e9)
 Once the training data has been prepped and the model recipe and specifications
 set, we can now use the package functions to fit models and generate scores. 
 
-### 4. Setting up the cross-validation (using `cv_setup`)
+### 4. Setting up the cross-validation (using `fl_cvsetup`)
 
-```{r cv_setup}
+```{r fl_cvsetup}
 
 tictoc::tic()
-cv_df <- cv_setup(training_data = training_df,
-                  num_folds = num_folds,
-                  num_bags = num_bags,
-                  num_seeds = num_common_seeds,
-                  fl_rec = rf_setup$rf_recipe,
-                  rf_spec = rf_setup$rf_spec,
-                  down_sample_ratio = down_sample_ratio)
+cv_df <- fl_cvsetup(training_data = training_df,
+                    num_folds = num_folds,
+                    num_bags = num_bags,
+                    num_seeds = num_common_seeds,
+                    fl_rec = rf_setup$rf_recipe,
+                    rf_spec = rf_setup$rf_spec,
+                    down_sample_ratio = down_sample_ratio)
 tictoc::toc()
 ```
 
 
-### 5. Predict scores (using `ml_train()`)
+### 5. Predict scores (using `fl_train()`)
 
-- `ml_train()`: fits a Random Forest for each fold x bag x seed using
+- `fl_train()`: fits a Random Forest for each fold x bag x seed using
 the previous recipe, specification steps and cross-validation setup
 - It applies a downsampling ratio of 1:1 to the training set
 - This step returns list of  `train_probabilities` a table with probabilities for
 assessment rows and the `fitted_models`. If a directory is specified, fitted models are saved accordingly. 
 
-### 6. Predictions from all seeds (using `ml_train()`)
+### 6. Predictions from all seeds (using `fl_train()`)
 
-- `ml_train()` also pools scores across all seeds and bags
+- `fl_train()` also pools scores across all seeds and bags
 
-The function is written to receive a single element of the output of `cv_setup()`, `cv_df` in this example. So a single run (with 5 folds) 
+The function is written to receive a single element of the output of `fl_cvsetup()`, `cv_df` in this example. So a single run (with 5 folds) 
 could be generated like this:
 
 ```{r, eval = FALSE}
 tictoc::tic()
-one_trained_model <- ml_train(cv_setup = cv_df[[1]],
+one_trained_model <- fl_train(cv_setup = cv_df[[1]],
                               rf_spec = rf_setup$rf_spec,
                               holdout = holdout_df)
 tictoc::toc()
@@ -428,19 +428,19 @@ tictoc::toc()
 This allows us to loop effectively across all seeds and bags, using `for` loops or `purrr::map()`, and parallelize in remote machines. 
 In this example, let's use `purrr::map()`.
 
-Note that the use of `holdout` is optional. If omitted, `ml_train()` will produce predictions for the training data only, if added, it will create predictions for new data, not used in model training.
+Note that the use of `holdout` is optional. If omitted, `fl_train()` will produce predictions for the training data only, if added, it will create predictions for new data, not used in model training.
 
-```{r ml_train}
+```{r fl_train}
 tictoc::tic()
 trained_models <- purrr::map(.x = cv_df,
-                             ~ml_train(rf_spec = rf_setup$rf_spec,
+                             ~fl_train(rf_spec = rf_setup$rf_spec,
                                        holdout = holdout_df))
 
 tictoc::toc()
 
 ```
 
-The output of `ml_train()` is another list of length `bags x seeds` (in this case, `r num_common_seeds * num_bags`).
+The output of `fl_train()` is another list of length `bags x seeds` (in this case, `r num_common_seeds * num_bags`).
 Each element of this list contains two tibble objects with the results for a single `fold`: `train_probabilities` and `pred_probabilities` __if `holdout` was included__.
 
 Both tibbles include the following columns: 
@@ -463,9 +463,9 @@ head(prob_all)
 ```
 
 
-### 7. Density-based algorithm for classification threshold (using `ml_classification()`)
+### 7. Density-based algorithm for classification threshold (using `fl_classification()`)
 
-`ml_classification()` aggregates `.pred_1` per `indID` to `pred_mean`, 
+`fl_classification()` aggregates `.pred_1` per `indID` to `pred_mean`, 
 estimates α (upper bound on positives in the unlabeled set), 
 and chooses a calibrated threshold `t` so the share of 
 predicted positives ≈ α (DEDPUL).
@@ -475,7 +475,7 @@ See [@ivanov_2020] for more details on the DEDPUL algorithm.
 
 ```{r classif_res, warning=FALSE}
 tictoc::tic()
-classif_res <- ml_classification(data = prob_all,
+classif_res <- fl_classification(data = prob_all,
                                  steps = 1000,
                                  plotting = FALSE,
                                  filepath = NULL,
@@ -489,7 +489,7 @@ tictoc::toc()
 
 ### Calibrated threshold
 
-- Within `ml_classification()` we apply the calibrated threshold `t` to 
+- Within `fl_classification()` we apply the calibrated threshold `t` to 
 each vessel’s mean score:  
   `pred_class = 1` if `pred_mean > t`, else `0`  
 - This produces the binary `pred_class`
@@ -511,7 +511,7 @@ dplyr::glimpse(classif_res$pred_conf)
 ## Additional steps: Performance and Fairness
 
 
-### Performance: Recall and specificity (using `ml_perf_metrics()`)
+### Performance: Recall and specificity (using `fl_perf_metrics()`)
 
 The performance of the model is evaluated through:
 
@@ -523,7 +523,7 @@ proportion of  negative cases predicted by the model as negatives
 ```{r perf_metrics}
 
 tictoc::tic()
-perf_metrics <- ml_perf_metrics(data = classif_res$pred_conf)
+perf_metrics <- fl_perf_metrics(data = classif_res$pred_conf)
 tictoc::toc()
 
 print(perf_metrics)

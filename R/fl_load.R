@@ -12,7 +12,7 @@
 #'
 #'
 
-ml_load <- function(cv_setup,
+fl_load <- function(cv_setup,
                     rf_spec = rf_setup$rf_spec,
                     save_dir) {
 list.files(save_dir)

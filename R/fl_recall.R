@@ -15,7 +15,7 @@
 #' @export
 #'
 
-ml_recall <- function(data) {
+fl_recall <- function(data) {
 
   perf_metrics <- data |>
     yardstick::recall(truth = factor(.data$known_offender,

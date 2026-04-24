@@ -20,7 +20,7 @@
 #' @export
 #'
 
-ml_perf_metrics <- function(data) {
+fl_perf_metrics <- function(data) {
 
   recall_value <- data |>
     dplyr::filter(.data$holdout == 0 ) |>

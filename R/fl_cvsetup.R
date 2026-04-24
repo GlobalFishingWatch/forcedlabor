@@ -29,14 +29,14 @@
 #'
 #' @export
 
-cv_setup <- function(training_data,
-                     num_folds,
-                     num_bags,
-                     num_seeds,
-                     fl_rec,
-                     rf_spec,
-                     down_sample_ratio,
-                     group_var = "source_id_number") {
+fl_cvsetup <- function(training_data,
+                       num_folds,
+                       num_bags,
+                       num_seeds,
+                       fl_rec,
+                       rf_spec,
+                       down_sample_ratio,
+                       group_var = "source_id_number") {
 
   common_seed_tibble <- tibble::tibble(common_seed = seq(1:num_seeds) * 101)
 

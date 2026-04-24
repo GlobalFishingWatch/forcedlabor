@@ -15,7 +15,7 @@
 #' @import workflows
 #'
 #' @export
-ml_train <- function(cv_setup = cv_df[[1]],
+fl_train <- function(cv_setup = cv_df[[1]],
                      rf_spec = rf_setup$rf_spec,
                      holdout = NULL,
                      save_dir = NULL) {

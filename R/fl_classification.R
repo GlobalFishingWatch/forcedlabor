@@ -35,7 +35,7 @@
 #' @export
 #'
 
-ml_classification <- function(data,
+fl_classification <- function(data,
                               steps = 1000,
                               plotting = FALSE,
                               filepath = NULL,

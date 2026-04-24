@@ -1,6 +1,6 @@
 #' Predicting over new data using previously trained RF models
 #'
-#' @param trained_models List of RF models (as returned by dev_ml_train; dev_ml_load)
+#' @param trained_models List of RF models (as returned by fl_train; fl_load)
 #' @param new_data New data over which to apply trained models to generate predictions
 #'
 #' @returns Dataframe with predicted values for each RF model
@@ -14,7 +14,7 @@
 #'
 #'
 
-ml_predict <- function(trained_models,
+fl_predict <- function(trained_models,
                        new_data) {
 
   # Predict with each model

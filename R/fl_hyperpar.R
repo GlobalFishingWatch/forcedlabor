@@ -15,7 +15,7 @@
 #' @export
 #'
 
-ml_hyperpar <- function(data) {
+fl_hyperpar <- function(data) {
 
   roc_auc_results <- data |>
     dplyr::mutate(counter = as.integer(factor(paste(.data$bag, .data$common_seed)))) |>

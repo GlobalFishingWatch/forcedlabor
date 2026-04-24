@@ -32,17 +32,17 @@
 #'
 #' @export
 
-rf_setup <- function(training_data,
-                     y = "known_offender",
-                     x = NULL,
-                     id = "indID",
-                     dont_use = c("flag_region", "known_non_offender"),
-                     control = "source_id_number",
-                     corr_threshold = 0.75,
-                     rf_trees = 500,
-                     rf_mtry = 1,
-                     rf_min_n = 15,
-                     rf_reg_factor = 0.5) {
+fl_rfsetup <- function(training_data,
+                       y = "known_offender",
+                       x = NULL,
+                       id = "indID",
+                       dont_use = c("flag_region", "known_non_offender"),
+                       control = "source_id_number",
+                       corr_threshold = 0.75,
+                       rf_trees = 500,
+                       rf_mtry = 1,
+                       rf_min_n = 15,
+                       rf_reg_factor = 0.5) {
 
   rf_recipe <-
     recipes::recipe(training_data) |>

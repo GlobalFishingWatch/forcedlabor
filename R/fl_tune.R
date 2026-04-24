@@ -31,7 +31,7 @@
 #' @importFrom yardstick metric_set roc_auc
 #'
 #'
-ml_tune <- function(training_data,
+fl_tune <- function(training_data,
                     fl_rec,
                     rf_spec,
                     num_folds,
