@@ -34,16 +34,27 @@ Positive cases (known offenders) come from confirmed reports and sanctions
 from human rights organizations. The criteria to classify forced labor cases
 come from the International Labour Organization.
 
-In this classification problem, there are very few confirmed reports of the 
-absence of forced labor. The immense majority of vessels are not inspected, 
-and even those that are, are not inspected regularly in time , so their . This 
-has several implications: 
+This model has specific characteristics that justify the use of a Positive-Unlabelled approach: 
 
-- The model needs to use _vessel-year_ as a unit for forced labor cases. 
+- the model uses _vessel-year_ as a unit for forced labor cases. 
 Vessels may exhibit different behaviors throughout their history and be reported
-on certain years, with no confirmation about their behavior in other years. 
-- We have very few confirmed negative cases, "known non-offenders" which are not used to train the model (but are expected to be classified as low-risk at the end of the modeling phase, as part of the specificity calculation). We cannot share 
-  - __Unlabeled cases__ which are vessel-year combinations for which we have no information (no evidence  of being a known offender but also no evidence of them being non-offenders). 
+on certain years, with no confirmation about their behavior in other years.
+- there are very few confirmed reports of the absence of forced labor. The
+immense majority of vessels are not inspected, and even those that are, are not
+inspected regularly in time, and a certification in port does not imply the
+absence of forced labour at sea. So instead of negative values in the training 
+data, the model takes __unlabelled cases__--with an unknown mix of positive and
+negative cases. 
+- __Unlabeled cases__ which are vessel-year combinations for which we have no
+information (no evidence  of being a known offender but also no evidence of them
+being non-offenders). 
+- The few confirmed negative cases, "known non-offenders" are therefor not used
+to train the model, but are expected to be classified as `low-risk`/negative by
+the model. These cases allow for the calculations of specificity and other
+perfornamce metrics. In addition to this, in the case of the manuscript Global
+Fishing Watch cannot share this data, as they were obtained under an NDA. If
+further negative cases are made available and it is possible to share, it will
+be possible to add them to the holdout dataset in further iterations. 
 
 
 Features to describe movement patterns and vessel characteristics are computed from 
@@ -386,7 +397,7 @@ oopts <- options(future.globals.maxSize = 1*1e9)
 Once the training data has been prepped and the model recipe and specifications
 set, we can now use the package functions to fit models and generate scores. 
 
-### 4. Setting up the cross-validation (using `fl_cvsetup`)
+### 4. Setting up the cross-validation (using `fl_cvsetup()`)
 
 ```{r fl_cvsetup}
 
