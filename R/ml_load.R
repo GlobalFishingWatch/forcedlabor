@@ -10,12 +10,12 @@
 #' @importFrom purrr map pmap
 #' @importFrom tibble tibble
 #'
-#' @export
 #'
 
-dev_ml_load <- function(cv_setup,
-                        save_dir) {
-
+ml_load <- function(cv_setup,
+                    rf_spec = rf_setup$rf_spec,
+                    save_dir) {
+list.files(save_dir)
   # Check directory exists
   if (!dir.exists(save_dir)) {
     stop("Directory does not exist: ", save_dir)

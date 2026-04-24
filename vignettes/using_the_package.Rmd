@@ -540,65 +540,36 @@ degree of discrimination of given groups regarding classification.
 We evaluated the model’s fairness as its capacity to correctly identify reported 
 positive cases by flag region and fishing gear.
 
-The first example below shows how to assess fairness based on 'flag region'
+The first example below shows how to assess fairness based on 'gear'
 
 - The fairness test assesses whether the model is equally successful at 
-classifying offenders as positive (recall) when considering different flag 
-regions
-  - Flags could be a sensitive characteristic, and potentially associated with
-  discrimination
-  - As we did not have enough cases to assess based on each individual Flag 
-  State, we compute and compare fairness for two groups: "Asian" and "Other"
+classifying offenders as positive (recall) when considering different gears
+  - Gears groups are disbalanced in the training data, which can create different results for different gears
 
 
-```{r fairness_flag}
+```{r fairness_gear}
 
-# Recall by flag_region
+# Recall by gear
 
-region_lookup <- training_df  |>
-  distinct(indID, flag_region)
+gear_lookup <- training_df  |>
+  distinct(indID, gear)
 
-classif_res$pred_conf |> 
- left_join(region_lookup, by = "indID") |> 
- group_by(flag_region) |> 
+gear_lookup |> count(gear)
+
+gear_lookup |> 
+left_join(classif_res$pred_conf) |>
+ group_by(gear) |> 
  mutate(
    known_offender = factor(as.character(known_offender), levels = c("0","1")),
    pred_class     = factor(as.character(pred_class),     levels = c("0","1"))
  ) |> 
  yardstick::recall(truth = known_offender,
         estimate = pred_class, event_level = "second")  |> 
- select(flag_region, .estimate)
+ select(gear, .estimate)
 ```
 
 
-# Alternative workflows with `ml_load()` and `ml_predict()`
 
-Function `ml_train()` can train the model and create predictions both for the training data and for a new dataset. 
-When new cases arrive (a new `holdout_df` that needs predictions to be generated), an alternative workflow can be:
-
-- saving the models to disk using the `save_dir` parameter of `ml_train()`
-- load the previously fitted models to the R session using `ml_load()`
-- create a new set of predictions using function `ml_predict()`
-
-### Loading previously fitted models 
-
-Previously trained models can be loaded from your local disk using `ml_load()` based on your cross-validation setup (output of `cv_setup()`).
-
-
-```{r load_models, eval = FALSE}
-loaded_models <- ml_load(cv_setup = cv_df,
-                         save_dir = "test")
-```
-
-### Predicting over new data 
-
-Fitted models can be used to predict over new data using `ml_predict()`. 
-
-```{r rf_predictions , eval = FALSE}
-predictions <- ml_predict(trained_models = trained_models)
-```
-
-`predictions` contains the same columns as `trained_models$train_probabilities`, but `holdout` takes value of 1, as predictions were generated over an external dataset not used for training.
 
 # References
 

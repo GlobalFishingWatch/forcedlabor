@@ -1,3 +1,5 @@
+#' Tune random forest
+#'
 #' Tune random forest hyper-parameters specified during dev_rf_setup
 #'
 #' @param training_data Dataset over which tune model hyperparameters
@@ -11,9 +13,9 @@
 #' positive and unlabeled cases used for training would be equal
 #' @param tune_parameters String defining parameter (or parameters) over which to perform tuning. Default to NULL which perform tuning across all hyperparameters in rf_spec
 #' @param grid number of grid random values for combinations of hyperparameters per bag, or grid of values to test
-#' @param parallel_plan type of parallelization to run (multicore, multisession
-#' or psock - this last one may need calling libraries inside)
-#' @param free_cores number of free cores to leave out of parallelization
+#' @param group_var from rsample::group_vfold_cv: A variable in data (single
+#' character or name) used for grouping observations with the same value to
+#' assign cases to train or test sets within a fold.
 #'
 #' @returns  Data frame of train cross-validated datasets across hyper-parameter values specified over grid.
 #'
@@ -28,7 +30,6 @@
 #' @importFrom workflows add_model add_recipe workflow
 #' @importFrom yardstick metric_set roc_auc
 #'
-#' @export
 #'
 ml_tune <- function(training_data,
                     fl_rec,
@@ -39,20 +40,15 @@ ml_tune <- function(training_data,
                     down_sample_ratio,
                     tune_parameters = NULL,
                     grid = NULL,
-                    parallel_plan,
-                    free_cores) {
-  common_seed_tibble <- tibble::tibble(common_seed =  seq(1:num_seeds) * 101)
+                    group_var) {
+  common_seed_tibble <- tibble::tibble(common_seed = seq(1:num_seeds) * 101)
 
   # Run all common_seeds
-  # GM: probably merge dev_bag_downsample with this pipe
-  bag_runs <- common_seed_tibble |>
+  down_bags <- common_seed_tibble |>
     tidyr::crossing(tibble::tibble(bag = seq(num_bags))) |>
     dplyr::mutate(recipe_seed = dplyr::row_number() * common_seed) |>
-    dplyr::mutate(counter = dplyr::row_number())
-
-  down_bags<-dev_bag_downsample(bag_runs = bag_runs,
-                                fl_rec = fl_rec,
-                                down_sample_ratio = down_sample_ratio)
+    dplyr::mutate(counter = dplyr::row_number()) |>
+    bag_downsample(fl_rec = fl_rec, down_sample_ratio = down_sample_ratio)
 
   ## Cross Validation
   # Ensure there is no splitting across source_id across analysis and assessment
@@ -61,11 +57,11 @@ ml_tune <- function(training_data,
     dplyr::mutate(cv_splits = purrr::map(common_seed, function(x) {
       set.seed(x)
       rsample::group_vfold_cv(training_data,
-                              group = source_id_number,
+                              group = group_var,
                               v = num_folds)
     }))
 
-  if(is.null(grid)){
+  if(is.null(grid)) {
 
     stop("grid must be provided to perform hyper-parameter tuning")
 
@@ -95,48 +91,33 @@ ml_tune <- function(training_data,
   }
 
   out <- furrr::future_pmap(list(down_bags$fl_recipe,
-                               down_bags$common_seed,
-                               down_bags$bag), # previously future_map2, now pmap to map 3 inputs
-                   function(x, y, .bag) # added .data$bag as third mapped input
-                   {
+                                 down_bags$common_seed,
+                                 down_bags$bag),
+                            function(x, y, .bag) {
+                              set.seed(y)
+                              cv_splits <- cv_splits_all |>
+                                dplyr::filter(.data$common_seed == y) |>
+                                purrr::pluck('cv_splits', 1)
 
-                     # Ensure all bags look the same across hyperparameter tuning grid
-                     set.seed(y)
+                # specifying the workflow, recipe for data and tuning
+                              cv_predictions <- workflows::workflow() |>
+                                workflows::add_model(rf_spec) |>
+                                workflows::add_recipe(x) |>
+                      # Automatically creates hyperparameter grid
+                      # using a space-filling design (via a Latin hypercube)
+                                tune::tune_grid(resamples = cv_splits,
+                                                grid = grid,
+                                                metrics = yardstick::metric_set(yardstick::roc_auc),
+                                                control = tune::control_resamples(save_pred = TRUE)) |>
+                                dplyr::select(id, .data$.predictions) |>
+                                tidyr::unnest(.data$.predictions) |>
+                                dplyr::select(-.data$.pred_0, -.data$.config) |>
+                                dplyr::mutate(bag = .bag,
+                                              common_seed = y)
 
-                     cv_splits <- cv_splits_all |>
-                       dplyr::filter(.data$common_seed == y) |>
-                       purrr::pluck('cv_splits')  |>
-                       purrr::pluck(1) # unlist first (unique) element
-                     # specifying the workflow with the model, recipe for data and how the
-                     # tuning goes
-
-                     cv_predictions <- workflows::workflow() |>
-                       workflows::add_model(rf_spec) |>
-                       workflows::add_recipe(x) |>
-                       tune::tune_grid(resamples = cv_splits,
-                                       # Automatically creates hyperparameter grid
-                                       # using a space-filling design (via a Latin hypercube)
-                                       grid = grid,
-                                       # Need to specify a metric to calculate, even though we
-                                       # won't use it for anything
-                                       # Doing ROC means that the predictions this outputs will be
-                                       # the raw numeric, rather than class
-                                       metrics = yardstick::metric_set(yardstick::roc_auc),
-                                       control = tune::control_resamples(save_pred = TRUE)) |>
-                       dplyr::select(id, .data$.predictions) |>
-                       tidyr::unnest(.data$.predictions) |>
-                       dplyr::select(-.data$.pred_0, -.data$.config) |>
-                       dplyr::mutate(bag = .bag,
-                                     common_seed = y)
-
-                     return(
-                       cv_predictions
-                     )
-                   },.options = furrr::furrr_options(seed = TRUE, packages = c("themis")))
-
-  if (parallel_plan == "psock") {
-    parallel::stopCluster(cl)
-  }
-
+                              return(
+                                cv_predictions
+                              )
+                            },.options = furrr::furrr_options(seed = TRUE, packages = c("themis")))
   return(do.call(rbind,out))
 }
