@@ -26,41 +26,51 @@ devtools::load_all()
 
 ## Overview
 
-`forcedlabor` is an R package to train a positive–unlabeled (PU) model to 
-detect fishing vessels exhibiting behaviors or characteristics consistent 
-with forced-labor offenders. 
+`forcedlabor` is an R package develop for training a positive–unlabeled (PU) 
+model to detect fishing vessels exhibiting behaviors or characteristics 
+consistent with forced-labor offenders. 
 
-Positive cases (known offenders) come from confirmed reports and sanctions 
-from human rights organizations. The criteria to classify forced labor cases
-come from the International Labour Organization.
+The model characteristics, particularly the PU approach, obey to the nature of 
+the available data on forced labor:
 
-This model has specific characteristics that justify the use of a Positive-Unlabelled approach: 
+- We have __positive cases__ of forced labor, which refer to vessels reported to 
+have engaged in forced labor. The model uses _vessel-year_ as a unit for forced 
+labor cases. 
+- While there are confirmed reports of certain vessels engaged in forced labor, 
+a confirmation of the absence of forced labor is extremely difficult to find. 
+The immense majority of vessels are not inspected for labor exploitation, and 
+even those that are, are usually inspected at port. A certification in port 
+is not 100\% guarantee of the absence of forced labor at sea. 
+So instead of having negative cases to train the model along with the positive 
+ones, the model takes __unlabeled cases__--with an unknown mix of positive and
+negative cases. __Unlabeled cases__ which are thus vessel-year combinations for which we have 
+no information (no evidence of being positive but also no evidence of them
+being negative). 
+- We had access to a list of vessels certified as compliant with the ILO C188
+requirements for work and living conditions. These certifications were based on 
+documents and inspections at port. They can be seen as __negative cases__, but 
+for the reasons mentioned above, they are not used for training the model. We 
+rather generate predictions for them after the training, expecting them to be 
+classified as negative. 
 
-- the model uses _vessel-year_ as a unit for forced labor cases. 
-Vessels may exhibit different behaviors throughout their history and be reported
-on certain years, with no confirmation about their behavior in other years.
-- there are very few confirmed reports of the absence of forced labor. The
-immense majority of vessels are not inspected, and even those that are, are not
-inspected regularly in time, and a certification in port does not imply the
-absence of forced labour at sea. So instead of negative values in the training 
-data, the model takes __unlabelled cases__--with an unknown mix of positive and
-negative cases. 
-- __Unlabeled cases__ which are vessel-year combinations for which we have no
-information (no evidence  of being a known offender but also no evidence of them
-being non-offenders). 
-- The few confirmed negative cases, "known non-offenders" are therefor not used
-to train the model, but are expected to be classified as `low-risk`/negative by
-the model. These cases allow for the calculations of specificity and other
-perfornamce metrics. In addition to this, in the case of the manuscript Global
-Fishing Watch cannot share this data, as they were obtained under an NDA. If
-further negative cases are made available and it is possible to share, it will
-be possible to add them to the holdout dataset in further iterations. 
+## The dataset in this package
 
-
-Features to describe movement patterns and vessel characteristics are computed from 
-AIS data and Global Fishing Watch’s AIS and identity pipelines.
-
-The vessel gears included in the model are trawlers, longlines and purse seines. 
+The dataset, `fl_training`, comes from a real dataset of positive and unlabeled
+cases, with one row per vessel-year and columns corresponding to vessel identity,
+the features of the model based on AIS data (and briefly described in a section 
+below), and columns to identify the positive cases (`known_offender` column), 
+negative cases (`known_non_offender` column), and unlabeled cases (0 values in 
+`known_offender` and in `known_non_offender`). 
+The original dataset contained less than 100 positive cases and almost
+a million vessel-years of unlabeled data. The vessel gears included are
+trawlers, longlines and purse seines. To generate `fl_training`, we 
+anonymized the vessels and randomly sampled 10,000 vessel-years, so that there
+could be a manageable sample to run the functions in the package in a local 
+computer. This sample does not contained real negative cases (the 
+C188-certified vessels), as they were obtained under a non-disclosure 
+agreement. If further negative cases are made available and it is possible to 
+share them publicly, we could add them to the holdout dataset of the package in
+the future. 
 
 
 ```{r setup, eval = F}
