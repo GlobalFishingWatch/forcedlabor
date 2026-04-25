@@ -55,83 +55,93 @@ classified as negative.
 
 ## The dataset in this package
 
-The dataset, `fl_training`, comes from a real dataset of positive and unlabeled
+The dataset, `sample_data`, comes from a real dataset of positive and unlabeled
 cases, with one row per vessel-year and columns corresponding to vessel identity,
 the features of the model based on AIS data (and briefly described in a section 
 below), and columns to identify the positive cases (`known_offender` column), 
 negative cases (`known_non_offender` column), and unlabeled cases (`0` values in 
 `known_offender` and in `known_non_offender`). 
-The original dataset contained less than 100 positive cases and almost
-a million vessel-years of unlabeled data. The vessel gears included are
-trawlers, longlines and purse seines. To generate `fl_training`, we 
-anonymized the vessels and randomly sampled 10,000 vessel-years, so that there
-could be a manageable sample to run the functions in the package in a local 
-computer. This sample does not contained real negative cases (the 
-C188-certified vessels), as they were obtained under a non-disclosure 
-agreement. If further negative cases are made available and it is possible to 
-share them publicly, we could add them to the holdout dataset of the package in
-the future. 
+The original dataset contained more than 100 positive cases and almost
+a million vessel-years of unlabeled data. The gear types included are
+trawlers, longlines and squid jiggers. To generate `sample_data`, we 
+anonymized the vessels, kept all the positives, and randomly sampled 10,000 
+vessel-years from the unlabeled, so that there could be a manageable sample to 
+run the functions in the package in a local computer. This sample does not 
+contained real negative cases (the C188-certified vessels), as they were 
+obtained under a non-disclosure agreement. If further negative cases are made 
+available and it is possible to share them publicly, we could add them to the 
+holdout dataset of the package in the future. 
 
 ## Model features
 
-The features used for classification correspond to vessel characteristics and variables describing vessel activity at sea that can be indicators of forced labor. 
+The features used for classification correspond to vessel characteristics and 
+variables describing vessel activity at sea that can help identify vessel with
+forced-labor-like movement patterns. 
 
 The features for this models were computed from Automatic Identification System (AIS) data processed by Global Fishing Watch. 
 
-The rationale behind why we selected these features is provided below.
+The rationale behind why we selected these features is summarized below.
 
 ### Vessel characteristics
 
-- Gear type shape expected movement.
-- Length, tonnage and engine power may enable longer, farther operations—factors 
+- *Gear type* shapes expected movement.
+- *Length*, *tonnage* and *engine power* may enable longer, farther operations—factors 
 associated with elevated forced-labor risk.
 
 ### Time at sea
 
-Long voyages and infrequent port allow vessels to avoid inspections and limit
+Long voyages and infrequent port visits allow vessels to avoid inspections and limit
 crew opportunities to report or exit abusive conditions.
-Excessive overtime is a common indicator of abuse. The following variables were
+Excessive overtime is a common indicator of abuse. The following variables are
 included to capture unusually long daily or yearly effort:
 
-- number of AIS positions
-- number of hours at sea
-- number of voyages
-- average voyage duration (in hours)
-- total number of fishing hours and average daily fishing hours
+- *number of AIS positions*
+- *number of hours at sea*
+- *number of voyages*
+- *average voyage duration* (in hours)
+- *total number of fishing hours* 
+- *average daily fishing hours*
 
 ### Distance from shore and port
 
-Operating far from shore may mean greater isolation and reduced oversight. The model included: 
+Operating far from shore may mean greater isolation and reduced oversight. The model includes: 
  
-- maximum distance from port (km)
-- maximum distance from shore (km)
+- *maximum distance from port* (km)
+- *maximum distance from shore* (km)
 
 ### Multijurisdictional issues
 
-Time in foreign EEZs or on the High Seas, and foreign post visits, increase
-the jurisdictional complexity to address forced labor cases. The model included: 
-- number of fishing hours in foreign EEZs
-- number of fishing hours in the High Seas
-- number of foreign port visits
+Time in foreign EEZs or on the High Seas, and foreign port visits, increase
+the jurisdictional complexity to address forced labor cases. The model includes: 
+- *number of fishing hours in foreign EEZs*
+- *number of fishing hours in the High Seas*
+- *number of foreign port visits*
 
 ### Transshipment, encounters, and loitering
 
-Encounter and loitering (stationnary behavior at sea that may indicate a  
+Encounters and loitering (stationary behavior at sea that may indicate a  
 potential encounter with a non-AIS-broadcasting vessel) patterns can indicate
 transshipment events. 
-Transhipments can prolong the time at sea and enable crew transfers, both of
+Transshipments can prolong the time at sea and enable crew transfers, both of
 which are linked to higher risk of forced labor.
+The model includes: 
 
-- number of encounters with other vessels at sea
-- number of encounters with vessels reported to have engaged in forced labor,
-- average encounter duration (hours)
-- number of loitering events
-- average loitering duration (hours).
+- *number of encounters with other vessels at sea*
+- *number of encounters with vessels reported to have engaged in forced labor*,
+- *average encounter duration* (hours)
+- *number of loitering events*
+- *average loitering duration* (hours).
 
 ### AIS disabling events-"gaps"
 
 Intentional AIS disabling can obscure activity and mask behaviors such as 
-transshipment or other evasive practices.
+transshipment or other evasive practices. The model includes: 
+
+- *number of intentional gaps*
+- *average duration (in days) for these gaps* 
+- *average distance* between the location where an intentional gap begins and the location where it ends
+- *average distance from port during these gaps*
+- *average distance from shore during these gaps* 
 
 
 
@@ -141,10 +151,12 @@ library(forcedlabor)
 
 ## Model workflow 
 
-The `forcedlabor` package allows to execute the workflow described in [@joo_2023]. This model first fits a series of Random Forests, using the `ranger` engine implementation and a `tidymodels` framework.
+The `forcedlabor` package allows to execute the workflow described in [@joo_2023] (and updated in a paper in review).
+This model first fits a series of random forests (RFs), using the `ranger` engine within a `tidymodels` framework.
 
-- Function `fl_rfsetup()` configures the model features, response variables, and the parameters required to configure the Random Forests (number of trees, `mtry`, minimum n per tree, regularization factor). 
-- Function `fl_cvsetup()` takes the output of `fl_rfsetup()` and configures the number of folds, bags, seeds and downsampling ratio required to run the crossvalidations.
+- The function `fl_rfsetup()` sets up the model features, response variables, and the parameters required to configure the RFs (number of trees, number of features that will be sampled at each
+split, minimum number of nodes per tree, regularization factor). 
+- The function `fl_cvsetup()` takes the output of `fl_rfsetup()` and configures the number of folds, bags, seeds and downsampling ratio required to run the crossvalidations.
 - Function `fl_train` fits the Random Forests for each combination of bag, fold and seed using the `recipe` configuration from `fl_cvsetup()`, creating a series of predictions for the training data, and optionally, for the holdout dataset. The function is written to generate the output for a single Random Forest (all the folds), and this implementations allows for a run of all models in sequence (using a `for` loop or `purrr::map()`) or parallel (like `furrr::future_map()`). 
 - Function `fl_classification()` implements the DEDPUL algorithm, calculating a calibrated threshold `t` and classifying the random forest mean scores against `t` to classify each prediction as `positive` or `negative`. 
 The calculation of confidence values for each case can also be done. 
