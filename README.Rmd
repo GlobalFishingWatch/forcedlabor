@@ -49,14 +49,9 @@ An example of how to use it is in a paper repo (soon to come)
 
 * **R:**            R functions of the package
 * **man:**          Standard documentation files for R functions
-* **renv:**         Contains files to activate the R environment with specific
-                    settings
 * **.Rbuildignore** Contains names of files that should be ignored to build
                     the R package
-* **.Rprofile**     Used in the R session to get the R environment of this
-                    package
 * **.gitignore**	  Files to ignore by version control.
-* **.pre-commit-config.yaml** Style linting using `pre-commit library.
 * **DESCRIPTION**   It stores the metadata of the package
 * **NAMESPACE**     It contains information of important names in the package
                     to provide space for them and make the package self
@@ -64,5 +59,3 @@ An example of how to use it is in a paper repo (soon to come)
 * **README.md**		  Top-level README on how to use this repo
 * **README.Rmd**    Rmarkdown file that generates README.md
 * **forcedlabor.Rproj** Rproj file
-* **renv.lock**     It contains the information on the packages used in the
-                    project.

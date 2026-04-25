@@ -9,6 +9,9 @@ Authors@R: c(
     "guillermo.martin@globalfishingwatch.org", role = c("aut")),
     person("Laura", "Osborne", , "laura.osborne@globalfishingwatch.org",
           role = c("aut")),      
+    person("Nate", "Miller", , "nate.miller@globalfishingwatch.org",
+          role = c("ctb")
+          ),
     person("Andrea", "Sánchez-Tapia", , "andrea.sanchez-tapia@globalfishingwatch.org",
           role = c("aut"),
           comment = c(ORCID = "0000-0002-3521-4338")),

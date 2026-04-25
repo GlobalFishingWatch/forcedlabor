@@ -3,7 +3,7 @@ title: "Forced labor risk workflow on a sample dataset"
 output:
   rmarkdown::html_vignette:
     toc: true
-    toc_depth: 3
+    toc_depth: 2
 bibliography: references.bib
 vignette: >
   %\VignetteIndexEntry{Forced labor risk workflow on a sample dataset}
@@ -43,7 +43,7 @@ even those that are, are usually inspected at port. A certification in port
 is not 100\% guarantee of the absence of forced labor at sea. 
 So instead of having negative cases to train the model along with the positive 
 ones, the model takes __unlabeled cases__--with an unknown mix of positive and
-negative cases. __Unlabeled cases__ which are thus vessel-year combinations for which we have 
+negative cases. __Unlabeled cases__ are thus vessel-year combinations for which we have 
 no information (no evidence of being positive but also no evidence of them
 being negative). 
 - We had access to a list of vessels certified as compliant with the ILO C188
@@ -59,7 +59,7 @@ The dataset, `fl_training`, comes from a real dataset of positive and unlabeled
 cases, with one row per vessel-year and columns corresponding to vessel identity,
 the features of the model based on AIS data (and briefly described in a section 
 below), and columns to identify the positive cases (`known_offender` column), 
-negative cases (`known_non_offender` column), and unlabeled cases (0 values in 
+negative cases (`known_non_offender` column), and unlabeled cases (`0` values in 
 `known_offender` and in `known_non_offender`). 
 The original dataset contained less than 100 positive cases and almost
 a million vessel-years of unlabeled data. The vessel gears included are
@@ -72,18 +72,84 @@ agreement. If further negative cases are made available and it is possible to
 share them publicly, we could add them to the holdout dataset of the package in
 the future. 
 
+## Model features
+
+The features used for classification correspond to vessel characteristics and variables describing vessel activity at sea that can be indicators of forced labor. 
+
+The features for this models were computed from Automatic Identification System (AIS) data processed by Global Fishing Watch. 
+
+The rationale behind why we selected these features is provided below.
+
+### Vessel characteristics
+
+- Gear type shape expected movement.
+- Length, tonnage and engine power may enable longer, farther operations—factors 
+associated with elevated forced-labor risk.
+
+### Time at sea
+
+Long voyages and infrequent port allow vessels to avoid inspections and limit
+crew opportunities to report or exit abusive conditions.
+Excessive overtime is a common indicator of abuse. The following variables were
+included to capture unusually long daily or yearly effort:
+
+- number of AIS positions
+- number of hours at sea
+- number of voyages
+- average voyage duration (in hours)
+- total number of fishing hours and average daily fishing hours
+
+### Distance from shore and port
+
+Operating far from shore may mean greater isolation and reduced oversight. The model included: 
+ 
+- maximum distance from port (km)
+- maximum distance from shore (km)
+
+### Multijurisdictional issues
+
+Time in foreign EEZs or on the High Seas, and foreign post visits, increase
+the jurisdictional complexity to address forced labor cases. The model included: 
+- number of fishing hours in foreign EEZs
+- number of fishing hours in the High Seas
+- number of foreign port visits
+
+### Transshipment, encounters, and loitering
+
+Encounter and loitering (stationnary behavior at sea that may indicate a  
+potential encounter with a non-AIS-broadcasting vessel) patterns can indicate
+transshipment events. 
+Transhipments can prolong the time at sea and enable crew transfers, both of
+which are linked to higher risk of forced labor.
+
+- number of encounters with other vessels at sea
+- number of encounters with vessels reported to have engaged in forced labor,
+- average encounter duration (hours)
+- number of loitering events
+- average loitering duration (hours).
+
+### AIS disabling events-"gaps"
+
+Intentional AIS disabling can obscure activity and mask behaviors such as 
+transshipment or other evasive practices.
+
+
 
 ```{r setup, eval = F}
 library(forcedlabor)
 ```
 
-### Model workflow 
+## Model workflow 
 
-The model workflow contains the following:
-Steps 1-3 involve data and model prep
-Steps 4-11 use the package functions
-Steps 12 and 13 are additional steps for assessing model performance and fairness
-(not included in workflow plot)
+The `forcedlabor` package allows to execute the workflow described in [@joo_2023]. This model first fits a series of Random Forests, using the `ranger` engine implementation and a `tidymodels` framework.
+
+- Function `fl_rfsetup()` configures the model features, response variables, and the parameters required to configure the Random Forests (number of trees, `mtry`, minimum n per tree, regularization factor). 
+- Function `fl_cvsetup()` takes the output of `fl_rfsetup()` and configures the number of folds, bags, seeds and downsampling ratio required to run the crossvalidations.
+- Function `fl_train` fits the Random Forests for each combination of bag, fold and seed using the `recipe` configuration from `fl_cvsetup()`, creating a series of predictions for the training data, and optionally, for the holdout dataset. The function is written to generate the output for a single Random Forest (all the folds), and this implementations allows for a run of all models in sequence (using a `for` loop or `purrr::map()`) or parallel (like `furrr::future_map()`). 
+- Function `fl_classification()` implements the DEDPUL algorithm, calculating a calibrated threshold `t` and classifying the random forest mean scores against `t` to classify each prediction as `positive` or `negative`. 
+The calculation of confidence values for each case can also be done. 
+- Function `fl_perf_metrics()` calculates recall and specificity (if a `holdout` dataset is provided). 
+
 
 ```{r workflow, echo=FALSE, out.width="100%"}
 here <- here::here()
@@ -92,43 +158,8 @@ knitr::include_graphics(img, rel_path = FALSE)
 
 ```
 
-The model workflow replicates that in [@joo_2023].
 
-1. Data: the training data is loaded. 
-This contains AIS-derived data at a yearly scale for positive vessels 
-(`known_offender = 1`) and unlabeled vessels (`known_offender = 0`)
-2. (Same) 5-fold CV: creates grouped folds by `source_id_number` so related 
-vessels stay together, rotating the assessment fold per seed.
-3. Fit random forests: for each fold × bag × seed, fit an RF using the 
-recipe/spec, with 1:1 down-sampling applied to the analysis split.
-4. Predicted scores: Collect out-of-fold probabilities `.pred_1` via 
-package function `fl_train()`
-5. Predictions from all seeds: pool the `.pred_1` scores across all seeds and 
-bags into `train_pred_proba`
-6. Density-based threshold (DEDPUL): `fl_classification()` function averages 
-scores to `pred_mean`, estimates alpha (α) on assessment data, and chooses a 
-calibrated threshold (t)
-7. Classification: Apply 't' to `pred_mean` to produce the binary label 
-`pred_class` (1 positive, 0 negative)
-8. Confidence: Compute a confidence score per vessel based on 
-variation across seeds × bags.
-
-Additional steps:
-
-9. Model performance: Report recall on assessment folds and specificity 
-if a holdout is provided using package function `fl_perf_metrics()`
-10. Fairness tests: Evaluate recall parity across non-modeled groups 
-(e.g., flag_region, gear) as post-hoc diagnostics
-
-
-## Pre-package data and model prep
-
-Before using the package functions we load the training data
-and prep the model
-
-### Data
-
-#### Train and test data
+## Train and test data
 
 The model starts with loading the required training data (`training_df`).
 This table contains AIS-derived data at a yearly scale for positive vessels 
@@ -136,6 +167,11 @@ This table contains AIS-derived data at a yearly scale for positive vessels
 
 We will split this example dataset into two dataframes: `training_df` will be used to train the model and `holdout_df` will be used to evaluate the model.
 
+- The original model is not trained on negative cases (`known_non_offender = 1`) 
+- If negative data is available, it can be used in the `holdout_df` to 
+calculate specificity (but `holdout_df` is not used in training)
+- If non-offender data is not available, `holdout_df` should be set to `NULL` 
+- Note that when `holdout_df` = `NULL`, specificity cannot be computed
 
 ```{r load_data}
 data("fl_training")
@@ -147,90 +183,6 @@ holdout_df <- fl_training[rows_pred, ]
 ```
 
 
-##### Positives: offenders
-
-The training dataset includes a list of positive (`known_offender = 1`) 
-and unlabeled (`known_offender = 0`) vessels and their corresponding features 
-from tracking data. 
-
-Our offender data has come from external reports on forced labor. 
-In many cases the exact date of the offence is unclear, hence why 
-we work on a yearly scale. 
-Reported cases were then matched to AIS data. 
-
-##### (Optional) holdout dataset via `holdout_df`
-
-- The original model is not trained on negative cases (`known_non_offender = 1`) 
-- If negative data is available, it can be used in the `holdout_df` to 
-calculate specificity (but `holdout_df` is not used in training)
-- If non-offender data is not available, `holdout_df` should be set to `NULL` 
-    - Note that when `holdout_df` = `NULL`, specificity cannot be computed
-
-
-##### Unlabeled
-
-All fishing vessels with no reported forced labor offences. 
-
-
-##### Predictors
-
-We use 26 variables as predictors. 
-The features used for classification corresponded to vessel characteristics 
-and movement patterns computed from Automatic Identification System (AIS) data.
-
-The rationale behind why we selected these features is provided below.
-
-**Vessel characteristics**
-
-Gear type shape expected movement.
-Length, tonnage and engine power may enable longer, farther operations—factors 
-associated with elevated forced-labor risk.
-
-**Fishing hours**
-
-Excessive work is a common indicator of abuse, so we include total and average 
-daily fishing hours to capture unusually long daily or yearly effort.
-
-**Distant water fishing**
-
-Time in foreign EEZs or on the High Seas and large distances from shore and 
-port increase jurisdictional complexity and remoteness, raising risk of forced
-labor.
-
-**Transshipment, encounters, and loitering**
-
-Encounter and loitering patterns can indicate transshipment. 
-Transhipment can prolong the time at sea, and enabling crew transfers.
-Both of which are linked to higher risk of forced labor.
-
-**AIS gaps**
-
-Gaps in AIS can obscure activity and mask behaviours such as transshipment or 
-other evasive practices.
-
-**Foreign port visits**
-
-Frequent foreign port calls can signal distant-water operations or recruitment 
-pathways via ports with weaker oversight.
-
-**Length of time at sea**
-
-Long voyages and infrequent port returns reduce monitoring and limit crew 
-opportunities to report or exit abusive conditions.
-
-```{r training_data}
-dplyr::glimpse(training_df)
-```
-
-### 2. (Same) 5-fold Cross Validation
-
-Once the training data is loaded, we set up our 5-fold CV.
-Here, the data (positives and unlabeled) are split into five groups of 
-roughly equal size.
-One of the groups is designated as the test set, and the others are part of 
-the training set. 
-The role of the test set is rotated among the group five times.
-
 To reduce the risk of data leakage, we keep data from the same source (in our
 case from the same forced labor report) in the same group.
 This means that vessels with the same `source_id_number` will either all be
@@ -241,26 +193,6 @@ training set, the model would likely
 perform well on the other one, an artificial effect of using related cases to 
 train and test.
 
-#### Cross-validation setup (folds, bags, seeds)
-
-- `num_folds <- 5` splits the data into 5 groups of roughly equal size
-    - More folds means better use of data and therefore lower likelihood of 
-    bias, but also means more computational costs
-- `num_bags` sets the number of bags to run as 5
-  - More bags mean more stable probability estimates across resampling
-- `down_sample_ratio` downsampling ratio set to 1:1
-  - To reduce the weight of the unlabeled cases in the model, we randomly 
-  downsampled them in the training set with a 1-1 ratio, i.e. the number of 
-  positive and unlabeled cases used for training would be equal
-  - This downsampling ratio is used later by `fl_train()` (Step 4)
-  but is included here for clarity
-- `num_common_seeds <- 3` sets 3 random seeds 
-  - Setting up common seeds to use anywhere that uses random numbers.
-  - Using fewer seeds is faster, but will be more sensitive to random chance
-- `cv_splits_all` checks that we don't have any splitting across source_id 
-for the analysis and assessment datasets
-
-
 ```{r cv_splits}
 num_folds <- 5
 num_bags <- 10
@@ -269,7 +201,7 @@ num_common_seeds <- 3
 ```
 
 
-### 3. Specifying the random forest model (using `fl_rfsetup()`) 
+## Model configuration using `fl_rfsetup()` and `fl_cvsetup()`
 
 There are two aspect to define as part of our random forest model, the model recipe, and the model specifications.
 
@@ -378,36 +310,7 @@ rf_setup <- fl_rfsetup(training_data = training_df,
                        rf_reg_factor = 1)
 ```
 
-#### Parallelization strategy
-
-We parallelize the bag x seed training across local CPU cores using `future`
-
-- `parallel_plan`:
-  - "multisession" spawns separate R sessions (safe on Windows & RStudio).
-  - "multicore" uses Unix forking (Linux/Mac in plain R; not on Windows/RStudio).
-  - "psock" is a portable fallback if multisession misbehaves (slightly slower).
-- `free_cores = 4`: keep 4 cores free for your system
-- `future.globals.maxSize`: max bytes of objects sent to workers 
-
-```{r parallel_plan}
-## parallelization strategy
-parallel_plan <- "multisession" # multisession if running from RStudio, or
-# multicore if from Linux, Mac and plain R, or
-# psock if multisession is not working well and you need to try something else
-if (parallel_plan == "multisession") {
-  utils::globalVariables("multisession")
-}
-free_cores <- 5 # add more if you need to do many things at the same time
-oopts <- options(future.globals.maxSize = 1*1e9)
-```
-
-
-## Using the `forcedlabor` package functions
-
-Once the training data has been prepped and the model recipe and specifications
-set, we can now use the package functions to fit models and generate scores. 
-
-### 4. Setting up the cross-validation (using `fl_cvsetup()`)
+### Function `fl_cvsetup()`
 
 ```{r fl_cvsetup}
 
@@ -423,19 +326,19 @@ tictoc::toc()
 ```
 
 
-### 5. Predict scores (using `fl_train()`)
+## Training the models: function `fl_train()`
 
-- `fl_train()`: fits a Random Forest for each fold x bag x seed using
+Once the training data has been prepped and the model recipe and specifications
+set, we can now use function `fl_train()`to fit models and generate scores. 
+
+Function `fl_train()` fits a Random Forest for each fold x bag x seed using
 the previous recipe, specification steps and cross-validation setup
 - It applies a downsampling ratio of 1:1 to the training set
 - This step returns list of  `train_probabilities` a table with probabilities for
 assessment rows and the `fitted_models`. If a directory is specified, fitted models are saved accordingly. 
-
-### 6. Predictions from all seeds (using `fl_train()`)
-
 - `fl_train()` also pools scores across all seeds and bags
 
-The function is written to receive a single element of the output of `fl_cvsetup()`, `cv_df` in this example. So a single run (with 5 folds) 
+The function is written to receive a single element of the output of `fl_cvsetup()` (`cv_df` in this example). So a single run (with 5 folds) 
 could be generated like this:
 
 ```{r, eval = FALSE}
@@ -483,15 +386,19 @@ prob_all <- bind_rows(pred_probabilities_all,
 head(prob_all)
 ```
 
+### Function `fl_classification()`: density-based algorithm for classification threshold
 
-### 7. Density-based algorithm for classification threshold (using `fl_classification()`)
-
-`fl_classification()` aggregates `.pred_1` per `indID` to `pred_mean`, 
-estimates α (upper bound on positives in the unlabeled set), 
+`fl_classification()` aggregates all random forest predictions for each vessel-year, 
+estimates $\alpha$ (upper bound on positives in the unlabeled set) based on $\beta$ probabilities, 
 and chooses a calibrated threshold `t` so the share of 
-predicted positives ≈ α (DEDPUL).
+predicted positives ≈ $\alpha$.
 
 See [@ivanov_2020] for more details on the DEDPUL algorithm.
+
+Before we continue, it may be worth mentioning parallelization. `fl_train()` can be parallelized if needed, but the number and size of the models allows for running them in sequence, but `fl_classification()` is generating confidence values across the whole unlabelled dataset and for a sequence of values. 
+In Joo et al 2026, this meant 722,000 unlabelled cases, so the function is set to run in parallel using `furrr::future_pmap()` function internally. 
+
+To set up a parallelization section to run `fl_classification()`, we can load and configure a `future` plan:
 
 
 ```{r classif_res, warning=FALSE}
@@ -505,28 +412,21 @@ classif_res <- fl_classification(data = prob_all,
                                  confidence_levels = TRUE
                                  )
 tictoc::toc()
+plan(sequential)
 ```
 
+- Within `fl_classification()` we apply the calibrated
+threshold `t` to each vessel’s mean score:  
+  `pred_class = 1` if `pred_mean > t`, else `0`. This produces the binary prediction (positive or negative, stored in column `pred_class`). 
+- The `confidence` value indicates how consistently a vessel’s
+score falls on the same side of `t` across seeds × bags. Values near 1
+indicate a very stable classification for that vessel-year (higher
+confidence in the classification).
 
-### Calibrated threshold
-
-- Within `fl_classification()` we apply the calibrated threshold `t` to 
-each vessel’s mean score:  
-  `pred_class = 1` if `pred_mean > t`, else `0`  
-- This produces the binary `pred_class`
-
-
-### Confidence for each vessel year classification
-
-- The `confidence` value indicates how consistently a vessel’s 
-score falls on the same side of `t` across seeds × bags
-- Computed only when multiple runs exist
-- Values near 1 indicate very stable 
-classification.
-
+In the case of this sample dataset, 8088 vessel-years were classified as negative and 1984 were classified as positive for forced labor risk. 
 
 ```{r classif_res_pred_conf}
-dplyr::glimpse(classif_res$pred_conf)
+classif_res$pred_conf |> count(pred_class)
 ```
 
 ## Additional steps: Performance and Fairness
