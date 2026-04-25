@@ -1,5 +1,5 @@
 Package: forcedlabor
-Title: Global Fishing Watch forced labor risk machine learning algorithms
+Title: Global Fishing Watch's forced labor risk machine learning algorithm
 Version: 1.0
 Authors@R: c(
     person("Rocío", "Joo", , "rocio.joo@globalfishingwatch.org",

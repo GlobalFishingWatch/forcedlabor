@@ -30,11 +30,11 @@
 #' @export
 
 fl_cvsetup <- function(training_data,
-                       num_folds,
-                       num_bags,
-                       num_seeds,
                        fl_rec,
                        rf_spec,
+                       num_seeds,
+                       num_bags,
+                       num_folds,
                        down_sample_ratio,
                        group_var = "source_id") {
 

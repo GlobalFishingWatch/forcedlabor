@@ -1,13 +1,21 @@
-forcedlabor: forced labor model package
+forcedlabor: Global Fishing Watch’s forced labor risk machine learning
+algorithm
 ================
 
-Updated: 2025-06-23
+Updated: 2026-04-24
 
 # Overview
 
-`forcedlabor` is an R package containing functions to identify forced
-labor on fishing vessels via a machine learning algorithm trained on a
-combination of known forced labor cases and AIS data predictors.
+`forcedlabor` is an R package develop for training a positive–unlabeled
+(PU) model to detect fishing vessels exhibiting behaviors or
+characteristics consistent with forced-labor offenders.
+
+The model is trained on a combination of confirmed cases of forced
+labor, an unlabeled set of vessels for which there is no information
+about the occurrence of forced labor (hence the **positive-unlabelled**
+denomination), and the features of the model derive from Automatic
+Identification System (AIS) data processed by Global Fishing Watch that
+describes vessel characteristics and activity.
 
 # Installation
 
@@ -27,25 +35,5 @@ remotes::install_github("GlobalFishingWatch/forcedlabor",
 
 # Using the package
 
-An example of how to use it is in a paper repo (soon to come)
-
-# Structure of the repository
-
-- **R:** R functions of the package
-- **man:** Standard documentation files for R functions
-- **renv:** Contains files to activate the R environment with specific
-  settings
-- **.Rbuildignore** Contains names of files that should be ignored to
-  build the R package
-- **.Rprofile** Used in the R session to get the R environment of this
-  package
-- **.gitignore** Files to ignore by version control.
-- **.pre-commit-config.yaml** Style linting using \`pre-commit library.
-- **DESCRIPTION** It stores the metadata of the package
-- **NAMESPACE** It contains information of important names in the
-  package to provide space for them and make the package self contained
-- **README.md** Top-level README on how to use this repo
-- **README.Rmd** Rmarkdown file that generates README.md
-- **forcedlabor.Rproj** Rproj file
-- **renv.lock** It contains the information on the packages used in the
-  project.
+Check the package vignette for function descriptions and an example
+workflow.
