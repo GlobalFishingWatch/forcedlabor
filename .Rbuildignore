@@ -1,7 +1,14 @@
-^renv$
-^renv\.lock$
 ^forcedlabor\.Rproj$
 ^\.Rproj\.user$
 ^README\.Rmd$
 ^\.pre-commit-config\.yaml$
 ^LICENSE\.md$
+^data-raw$
+^doc$
+^Meta$
+docs
+vignettes/saving.Rmd
+test
+R/fl_load.R
+R/fl_predict.R
+R/fl_tune.R

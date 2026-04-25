@@ -1,0 +1,66 @@
+#' Computes recall for assessment sets and specificity for holdout non offenders
+#'
+#' @description Two performance metrics are computed:
+#' recall, for assessment sets (in model versions that did not use them for
+#' training), and specificity for holdout non offenders (in the same year of the
+#' certification/inspection - if done at the end of the year)
+#'
+#' @param data tibble with at least a prediction_output column (`pred_class`),
+#' a `holdout` column (whether if the observation was used in the model or
+#' held out), a `known_offender` column (whether the vessel was identified as
+#' an offender by reports), and a `known_non_offender` column (whether the
+#' vessel was identified as non offender by inspections).
+#' @return tibble with recall and specificity per seed
+#'
+#' @importFrom purrr pluck
+#' @importFrom yardstick recall
+#' @importFrom yardstick spec
+#' @import dplyr
+#'
+#' @export
+#'
+
+fl_perf_metrics <- function(data) {
+
+  recall_value <- data |>
+    dplyr::filter(.data$holdout == 0 ) |>
+    dplyr::mutate(known_offender = stats::relevel(known_offender, "1", "0")) |>
+    dplyr::mutate(pred_class = stats::relevel(as.factor(pred_class), "1", "0")) |>
+    yardstick::recall(truth = known_offender,
+                      estimate = pred_class) |>
+    dplyr::select(.estimate) |>
+    purrr::pluck(1)
+
+  if (sum(data$holdout == 1) > 0) {
+
+    specif_0 <- data |>
+    dplyr::filter(.data$holdout == 1 & .data$known_non_offender == 1) |>
+    dplyr::mutate(known_offender = stats::relevel(known_offender, "1", "0"))
+
+  if (sum(specif_0$pred_class == 1) == 0) {
+    specif_0 <- specif_0 |>
+      dplyr::mutate(pred_class = factor(pred_class, levels = c("1", "0")))
+  }else {
+    specif_0 <- specif_0 |>
+      dplyr::mutate(pred_class = stats::relevel(as.factor(pred_class), "1", "0"))
+  }
+
+  specif_value <- specif_0 |>
+    yardstick::spec(truth = known_offender,
+                    estimate = pred_class) |>
+    dplyr::select(.estimate) |>
+    purrr::pluck(1)
+
+  } else {
+
+    print('No data to compute specificity')
+
+    specif_value <- NA
+
+  }
+
+
+  perf_metrics <- data.frame(recall = recall_value, specif = specif_value)
+
+  return(perf_metrics)
+}

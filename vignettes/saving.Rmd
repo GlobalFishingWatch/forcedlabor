@@ -1,0 +1,61 @@
+---
+title: "Saving and loading models"
+author: "AST"
+date: "2026-04-24"
+output: html_document
+---
+
+# Alternative workflows with `ml_load()` and `ml_predict()`
+
+Function `ml_train()` can train the model and create predictions both for the training data and for a new dataset. 
+When new cases arrive (a new `holdout_df` that needs predictions to be generated), an alternative workflow can be:
+
+- saving the models to disk using the `save_dir` parameter of `ml_train()`
+- load the previously fitted models to the R session using `ml_load()`
+- create a new set of predictions using function `ml_predict()`
+
+### Tuning models
+
+The example provided had already fixed hyperparameters to train the PU model. 
+
+To arrive to a combination of parameters 
+
+### Saving models on disk 
+
+To save the model objects on disk the user can use parameter `save_dir` to point the destination folder.
+Note that this process will take a while since the trained modes are quite heavy. 
+
+```{r ml_train_save}
+tictoc::tic()
+trained_models <- purrr::map(.x = cv_df,
+                             ~ml_train(rf_spec = rf_setup$rf_spec,
+                                       holdout = holdout_df,
+                                       save_dir ="test"))
+
+tictoc::toc()
+
+```
+
+```{r}
+knitr::knit_exit()
+```
+
+### Loading previously fitted models 
+
+Previously trained models can be loaded from your local disk using `ml_load()` based on your cross-validation setup (output of `cv_setup()`).
+
+
+```{r load_models, eval = FALSE}
+loaded_models <- ml_load(cv_setup = cv_df,
+                         save_dir = "./vignettes/test")
+```
+
+### Predicting over new data 
+
+Fitted models can be used to predict over new data using `ml_predict()`. 
+
+```{r rf_predictions , eval = FALSE}
+predictions <- ml_predict(trained_models = trained_models)
+```
+
+`predictions` contains the same columns as `trained_models$train_probabilities`, but `holdout` takes value of 1, as predictions were generated over an external dataset not used for training.
