@@ -98,7 +98,7 @@ The features used for classification correspond to vessel characteristics and
 variables describing vessel activity at sea that can help identify vessel with
 forced-labor-like movement patterns. 
 
-The features for this models were computed from Automatic Identification System (AIS) data processed by Global Fishing Watch. 
+The features for this model were computed from Automatic Identification System (AIS) data processed by Global Fishing Watch. 
 
 The rationale behind why we selected these features is summarized below.
 
