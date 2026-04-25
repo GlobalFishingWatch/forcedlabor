@@ -55,7 +55,7 @@ classified as negative.
 
 ## The dataset in this package
 
-The dataset, `sample_data`, comes from a real dataset of positive and unlabeled
+The dataset, `fl_sample_data`, comes from a real dataset of positive and unlabeled
 cases, with one row per vessel-year and columns corresponding to vessel identity,
 the features of the model based on AIS data (and briefly described in a section 
 below), and columns to identify the positive cases (`known_offender` column), 
@@ -63,7 +63,7 @@ negative cases (`known_non_offender` column), and unlabeled cases (`0` values in
 `known_offender` and in `known_non_offender`). 
 The original dataset contained more than 100 positive cases and almost
 a million vessel-years of unlabeled data. The gear types included are
-trawlers, longlines and squid jiggers. To generate `sample_data`, we 
+trawlers, longlines and squid jiggers. To generate `fl_sample_data`, we 
 anonymized the vessels, kept all the positives, and randomly sampled 10,000 
 vessel-years from the unlabeled, so that there could be a manageable sample to 
 run the functions in the package in a local computer. This sample does not 
@@ -154,13 +154,26 @@ library(forcedlabor)
 The `forcedlabor` package allows to execute the workflow described in [@joo_2023] (and updated in a paper in review).
 This model first fits a series of random forests (RFs), using the `ranger` engine within a `tidymodels` framework.
 
-- The function `fl_rfsetup()` sets up the model features, response variables, and the parameters required to configure the RFs (number of trees, number of features that will be sampled at each
-split, minimum number of nodes per tree, regularization factor). 
-- The function `fl_cvsetup()` takes the output of `fl_rfsetup()` and configures the number of folds, bags, seeds and downsampling ratio required to run the crossvalidations.
-- Function `fl_train` fits the Random Forests for each combination of bag, fold and seed using the `recipe` configuration from `fl_cvsetup()`, creating a series of predictions for the training data, and optionally, for the holdout dataset. The function is written to generate the output for a single Random Forest (all the folds), and this implementations allows for a run of all models in sequence (using a `for` loop or `purrr::map()`) or parallel (like `furrr::future_map()`). 
-- Function `fl_classification()` implements the DEDPUL algorithm, calculating a calibrated threshold `t` and classifying the random forest mean scores against `t` to classify each prediction as `positive` or `negative`. 
+- The function `fl_rfsetup()` sets up the model features, response variables,
+and the parameters required to configure the RFs (number of trees, number of
+features that will be sampled at each split, minimum number of nodes per tree,
+regularization factor). 
+- The function `fl_cvsetup()` takes the output of `fl_rfsetup()` and configures
+the number of folds, bags, seeds and downsampling ratio required to run the
+crossvalidations.
+- The function `fl_train()` fits the Random Forests for each combination of bag,
+fold and seed using the `recipe` configuration from `fl_cvsetup()`, creating a
+series of predictions for the training data, and optionally, for the holdout
+dataset. The function is written to generate the output for a single Random
+Forest (all the folds), and this implementations allows for a run of all models
+in sequence (using a `for` loop or `purrr::map()`) or parallel (like
+`furrr::future_map()`). 
+- The function `fl_classification()` implements the DEDPUL algorithm,
+calculating a calibrated threshold `t` and classifying the random forest mean
+scores against `t` to classify each prediction as `positive` or `negative`. 
 The calculation of confidence values for each case can also be done. 
-- Function `fl_perf_metrics()` calculates recall and specificity (if a `holdout` dataset is provided). 
+- The function `fl_perf_metrics()` calculates recall and specificity (if a
+`holdout` dataset is provided). 
 
 
 ```{r workflow, echo=FALSE, out.width="100%"}
@@ -177,7 +190,8 @@ The model starts with loading the required training data (`training_df`).
 This table contains AIS-derived data at a yearly scale for positive vessels 
 (`known_offender = 1`) and unlabeled vessels (`known_offender = 0`). 
 
-We will split this example dataset into two dataframes: `training_df` will be used to train the model and `holdout_df` will be used to evaluate the model.
+We will split this example dataset into two dataframes: `training_df` will be
+used to train the model and `holdout_df` will be used to evaluate the model.
 
 - The original model is not trained on negative cases (`known_non_offender = 1`) 
 - If negative data is available, it can be used in the `holdout_df` to 
@@ -186,12 +200,9 @@ calculate specificity (but `holdout_df` is not used in training)
 - Note that when `holdout_df` = `NULL`, specificity cannot be computed
 
 ```{r load_data}
-data("fl_training")
-
-set.seed(101)
-rows_pred <- sample(seq_len(nrow(fl_training)), size = 1000)
-training_df <- fl_training[-rows_pred, ]
-holdout_df <- fl_training[rows_pred, ]
+data("fl_sample_data")
+training_df <- fl_sample_data |> filter(holdout == 0)
+holdout_df <- fl_sample_data |> filter(holdout == 1)
 ```
 
 
@@ -215,7 +226,8 @@ num_common_seeds <- 3
 
 ## Model configuration using `fl_rfsetup()` and `fl_cvsetup()`
 
-There are two aspect to define as part of our random forest model, the model recipe, and the model specifications.
+There are two aspect to define as part of our random forest model, the model 
+recipe, and the model specifications.
 
 #### Writing the recipe
 
@@ -313,8 +325,8 @@ rf_setup <- fl_rfsetup(training_data = training_df,
                        x = c(features_model_characteristics,
                              features_model_movement),
                        id = "indID",
-                       dont_use = c("flag_region", "known_non_offender"),
-                       control = "source_id_number",
+                       dont_use = c("known_non_offender"),
+                       control = "source_id",
                        corr_threshold = 0.75,
                        rf_trees = 500,
                        rf_mtry = 5,
@@ -345,12 +357,14 @@ set, we can now use function `fl_train()`to fit models and generate scores.
 
 Function `fl_train()` fits a Random Forest for each fold x bag x seed using
 the previous recipe, specification steps and cross-validation setup
+
 - It applies a downsampling ratio of 1:1 to the training set
 - This step returns list of  `train_probabilities` a table with probabilities for
 assessment rows and the `fitted_models`. If a directory is specified, fitted models are saved accordingly. 
 - `fl_train()` also pools scores across all seeds and bags
 
-The function is written to receive a single element of the output of `fl_cvsetup()` (`cv_df` in this example). So a single run (with 5 folds) 
+The function is written to receive a single element of the output of 
+`fl_cvsetup()` (`cv_df` in this example). So a single run (with 5 folds) 
 could be generated like this:
 
 ```{r, eval = FALSE}
@@ -361,10 +375,13 @@ one_trained_model <- fl_train(cv_setup = cv_df[[1]],
 tictoc::toc()
 ```
 
-This allows us to loop effectively across all seeds and bags, using `for` loops or `purrr::map()`, and parallelize in remote machines. 
+This allows us to loop effectively across all seeds and bags, using `for` loops
+or `purrr::map()`, and parallelize in remote machines. 
 In this example, let's use `purrr::map()`.
 
-Note that the use of `holdout` is optional. If omitted, `fl_train()` will produce predictions for the training data only, if added, it will create predictions for new data, not used in model training.
+Note that the use of `holdout` is optional. If omitted, `fl_train()` will
+produce predictions for the training data only, if added, it will create
+predictions for new data, not used in model training.
 
 ```{r fl_train}
 tictoc::tic()
@@ -376,8 +393,11 @@ tictoc::toc()
 
 ```
 
-The output of `fl_train()` is another list of length `bags x seeds` (in this case, `r num_common_seeds * num_bags`).
-Each element of this list contains two tibble objects with the results for a single `fold`: `train_probabilities` and `pred_probabilities` __if `holdout` was included__.
+The output of `fl_train()` is another list of length `bags x seeds` (in this
+case, `r num_common_seeds * num_bags`).
+Each element of this list contains two tibble objects with the results for a
+single `fold`: `train_probabilities` and `pred_probabilities` __if `holdout` was
+included__.
 
 Both tibbles include the following columns: 
 
@@ -385,7 +405,8 @@ Both tibbles include the following columns:
 - `indID`: a unique vessel identifier
 - `known offender`: if the vessel is positive
 - `known non offender`: if the vessel is negative (unavailable in this dataset)
-- `holdout`:  0 in the case of `train_probabilities` and 1 in the case of `pred_probabilities`, if available (i.e., if `holdout` was passed to the function).
+- `holdout`:  0 in the case of `train_probabilities` and 1 in the case of
+`pred_probabilities`, if available (i.e., if `holdout` was passed to the function).
 
 Let's extract both lists and create a single dataframe for all
 
@@ -398,7 +419,8 @@ prob_all <- bind_rows(pred_probabilities_all,
 head(prob_all)
 ```
 
-### Function `fl_classification()`: density-based algorithm for classification threshold
+### Function `fl_classification()`: density-based algorithm for classification 
+threshold
 
 `fl_classification()` aggregates all random forest predictions for each vessel-year, 
 estimates $\alpha$ (upper bound on positives in the unlabeled set) based on $\beta$ probabilities, 
@@ -406,11 +428,6 @@ and chooses a calibrated threshold `t` so the share of
 predicted positives ≈ $\alpha$.
 
 See [@ivanov_2020] for more details on the DEDPUL algorithm.
-
-Before we continue, it may be worth mentioning parallelization. `fl_train()` can be parallelized if needed, but the number and size of the models allows for running them in sequence, but `fl_classification()` is generating confidence values across the whole unlabelled dataset and for a sequence of values. 
-In Joo et al 2026, this meant 722,000 unlabelled cases, so the function is set to run in parallel using `furrr::future_pmap()` function internally. 
-
-To set up a parallelization section to run `fl_classification()`, we can load and configure a `future` plan:
 
 
 ```{r classif_res, warning=FALSE}
@@ -424,7 +441,6 @@ classif_res <- fl_classification(data = prob_all,
                                  confidence_levels = TRUE
                                  )
 tictoc::toc()
-plan(sequential)
 ```
 
 - Within `fl_classification()` we apply the calibrated
@@ -435,23 +451,20 @@ score falls on the same side of `t` across seeds × bags. Values near 1
 indicate a very stable classification for that vessel-year (higher
 confidence in the classification).
 
-In the case of this sample dataset, 8088 vessel-years were classified as negative and 1984 were classified as positive for forced labor risk. 
-
 ```{r classif_res_pred_conf}
 classif_res$pred_conf |> count(pred_class)
 ```
 
-## Additional steps: Performance and Fairness
+In the case of this sample dataset, 8088 vessel-years were classified as negative and 1984 were classified as positive for forced labor risk. 
 
-
-### Performance: Recall and specificity (using `fl_perf_metrics()`)
+## Assessing model performance with function `fl_perf_metrics()`
 
 The performance of the model is evaluated through:
 
 - `recall`: the proportion of positive cases predicted by the model
 as positive
 - `specificity`: if a `holdout_df` has been provided, the
-proportion of  negative cases predicted by the model as negatives
+proportion of negative cases correctly predicted by the model as negatives
 
 ```{r perf_metrics}
 
@@ -460,8 +473,6 @@ perf_metrics <- fl_perf_metrics(data = classif_res$pred_conf)
 tictoc::toc()
 
 print(perf_metrics)
-
-
 ```
 
 

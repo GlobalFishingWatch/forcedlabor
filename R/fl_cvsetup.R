@@ -36,7 +36,7 @@ fl_cvsetup <- function(training_data,
                        fl_rec,
                        rf_spec,
                        down_sample_ratio,
-                       group_var = "source_id_number") {
+                       group_var = "source_id") {
 
   common_seed_tibble <- tibble::tibble(common_seed = seq(1:num_seeds) * 101)
 
