@@ -1,5 +1,5 @@
 ---
-title: "forcedlabor: Global Fishing Watch's forced labor risk machine learning algorithm"
+title: ""
 output: github_document
 ---
 
@@ -13,9 +13,11 @@ knitr::opts_chunk$set(
 )
 ```
 
+# forcedlabor: Global Fishing Watch's forced labor risk machine learning algorithm
+
 Updated: `r Sys.Date()`
 
-# Overview
+## Overview
 
 `forcedlabor` is an R package develop for training a positive–unlabeled (PU) 
 model to detect fishing vessels exhibiting behaviors or characteristics 
@@ -24,7 +26,7 @@ consistent with forced-labor offenders.
 
 The model is trained on a combination of confirmed cases of forced labor, an unlabeled set of vessels for which there is no information about the occurrence of forced labor (hence the __positive-unlabelled__ denomination), and the features of the model derive from Automatic Identification System (AIS) data processed by Global Fishing Watch that describes vessel characteristics and activity. 
 
-# Installation
+## Installation
 
 You can install the most recent version of `forcedlabor` using:
 
@@ -40,7 +42,7 @@ remotes::install_github("GlobalFishingWatch/forcedlabor",
                         dependencies = TRUE)
 ```
 
-# Using the package
+## Using the package
 
 Check the package vignette for function descriptions and an example workflow.
 

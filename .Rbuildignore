@@ -12,3 +12,6 @@ test
 R/fl_load.R
 R/fl_predict.R
 R/fl_tune.R
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

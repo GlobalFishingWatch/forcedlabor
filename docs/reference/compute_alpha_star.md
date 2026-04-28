@@ -1,0 +1,56 @@
+# Compute alpha\*\_n from DEDPUL
+
+Computing alpha star, or the upper bound of alpha, the proportion of
+positives within the unlabeled (populationwise). Function used in
+dedpul_estimation
+
+## Usage
+
+``` r
+compute_alpha_star(r, steps = 1000, plotting = FALSE, filename = NULL)
+```
+
+## Arguments
+
+- r:
+
+  sorted 1D array of density ratios
+
+- steps:
+
+  Number of locations at which to compute D
+
+- plotting:
+
+  if TRUE, a D vs. alpha plot is generated
+
+- filename:
+
+  if plotting is TRUE, a filename with path is required
+
+## Value
+
+estimated alpha\*\_n
+
+## Details
+
+We first compute D; see reference The nominal shape of an alpha\* vs D
+plot is: \| / \| / \| / D=0 + ——/ \| +———————— alpha
+
+alpha\* is located at the corner where D departs from zero. DEDPUL uses
+two approaches to find this location. One is to find the rightmost point
+where D is zero, the resulting estimate is referred to as alpha\*\_c.
+This is computed using the EM algorithm in DEDPUL, but it seems to be
+unstable and can get stuck in very small values of alpha, so we're not
+computing it.
+
+The second approach is to find the maximum of the second derivative of
+D. This is referred to as alpha\*\_n and we compute it exactly as it is
+computed in the DEDPUL paper (Algorithm 2).
+
+## References
+
+D. Ivanov, "DEDPUL: Difference-of-Estimated-Densities-based
+Positive-Unlabeled Learning," 2020 19th IEEE International Conference on
+Machine Learning and Applications (ICMLA), 2020, pp. 782-790, doi:
+10.1109/ICMLA51294.2020.00128.

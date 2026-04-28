@@ -1,9 +1,9 @@
+# Overview
 
-# forcedlabor: Global Fishing Watch’s forced labor risk machine learning algorithm
+forcedlabor: Global Fishing Watch’s forced labor risk machine learning
+algorithm ================
 
-Updated: 2026-04-27
-
-## Overview
+Updated: 2026-04-24
 
 `forcedlabor` is an R package develop for training a positive–unlabeled
 (PU) model to detect fishing vessels exhibiting behaviors or
@@ -16,7 +16,7 @@ denomination), and the features of the model derive from Automatic
 Identification System (AIS) data processed by Global Fishing Watch that
 describes vessel characteristics and activity.
 
-## Installation
+# Installation
 
 You can install the most recent version of `forcedlabor` using:
 
@@ -32,7 +32,7 @@ remotes::install_github("GlobalFishingWatch/forcedlabor",
                         dependencies = TRUE)
 ```
 
-## Using the package
+# Using the package
 
 Check the package vignette for function descriptions and an example
 workflow.

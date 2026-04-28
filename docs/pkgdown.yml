@@ -1,0 +1,9 @@
+pandoc: '3.2'
+pkgdown: 2.2.0
+pkgdown_sha: ~
+articles:
+  using_the_package: using_the_package.html
+last_built: 2026-04-28T00:48Z
+urls:
+  reference: https://github.com/GlobalFishingWatch/forcedlabor/reference
+  article: https://github.com/GlobalFishingWatch/forcedlabor/articles
