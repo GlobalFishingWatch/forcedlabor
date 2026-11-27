@@ -25,7 +25,7 @@
 #' Machine Learning and Applications (ICMLA), 2020, pp. 782-790, doi:
 #' 10.1109/ICMLA51294.2020.00128.
 #'
-#' @importFrom furrr future_map
+#' @importFrom furrr future_map2_dbl
 #' @importFrom future plan
 #' @importFrom purrr map2_dbl
 #' @importFrom EnvStats ebeta
@@ -83,27 +83,28 @@ fl_classification <- function(data,
 
     if (length(unique(data$common_seed)) + length(unique(data$bag)) > 2) {
 
-      split_df <- predclass_df |>
-        split(predclass_df$indID)
-
-      confidence_list <- furrr::future_map(
-        .x = split_df,
-        .f = \(x) conf_estimate(predicted_df = x,
-                                data = data,
-                                threshold = threshold_res$thres_star))
-
-      count_null <- sum(lengths(confidence_list) == 0)
-
-      if (count_null > 0) {
-        print(paste0("nulls: ", count_null))
-        confidence_list <- confidence_list[lengths(confidence_list) != 0]
+      # one row per vessel-year is needed to match scores to predicted classes
+      ids <- as.character(predclass_df$indID)
+      bad_ids <- unique(ids[is.na(ids) | duplicated(ids)])
+      if (length(bad_ids) > 0) {
+        stop("Confidence levels need one row per vessel-year (indID). ",
+             length(bad_ids), " indID value(s) are missing or appear in ",
+             "more than one row, for example: ",
+             paste(bad_ids[seq_len(min(5, length(bad_ids)))], collapse = ", "),
+             call. = FALSE)
       }
 
-      confidence_vector <- t(do.call(cbind.data.frame, confidence_list))
-      confidence_df <- data.frame(indID = rownames(confidence_vector),
-                                  conf = confidence_vector)
+      # group the scores once per vessel-year, in predclass_df row order
+      scores_list <- split(data$.pred_1, data$indID)[ids]
 
-      predclass_df <- dplyr::left_join(predclass_df, confidence_df, by = dplyr::join_by(indID))
+      confidence_vector <- furrr::future_map2_dbl(
+        .x = scores_list,
+        .y = predclass_df$pred_class,
+        .f = \(x, y) conf_estimate(scores = x,
+                                   pred_class = y,
+                                   threshold = threshold_res$thres_star))
+
+      predclass_df$conf <- unname(confidence_vector)
 
     } else {
       message("Not enough data to compute confidence levels")

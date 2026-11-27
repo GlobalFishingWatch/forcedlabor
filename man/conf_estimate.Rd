@@ -4,18 +4,18 @@
 \alias{conf_estimate}
 \title{Compute a confidence level estimate}
 \usage{
-conf_estimate(predicted_df, data, threshold)
+conf_estimate(scores, pred_class, threshold)
 }
 \arguments{
-\item{predicted_df}{dataframe of one row containing the predicted class and
-the ID of the vessel, that should match the IDs in data}
+\item{scores}{numeric vector with all the random forest scores of one
+vessel-year}
 
-\item{data}{dataframe with all the random forest scores}
+\item{pred_class}{predicted class (0 or 1) of that vessel-year}
 
 \item{threshold}{threshold to classify the scores into 0 or 1}
 }
 \value{
-confidence level estimates
+confidence level estimate, a single number
 }
 \description{
 Computing confidence level estimates for the predicted class

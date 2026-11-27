@@ -5,27 +5,27 @@
 #' computing the probability mass below or above the classification threshold,
 #' if the class is 0 or 1, respectively
 #'
-#' @param predicted_df dataframe of one row containing the predicted class and
-#' the ID of the vessel, that should match the IDs in data
-#' @param data dataframe with all the random forest scores
+#' @param scores numeric vector with all the random forest scores of one
+#' vessel-year
+#' @param pred_class predicted class (0 or 1) of that vessel-year
 #' @param threshold threshold to classify the scores into 0 or 1
 #'
-#' @return confidence level estimates
+#' @return confidence level estimate, a single number
 #'
 
-conf_estimate <- function(predicted_df, data, threshold) {
+conf_estimate <- function(scores, pred_class, threshold) {
 
-  options(warn = -1)
-  predictions <- data$.pred_1[which(data$indID == predicted_df$indID)]
-  if ((length(predictions) > 1 &&
-       (all(predictions == 1) || all(predictions == 0))) ||
-      length(unique(predictions)) == 1) {
+  if ((length(scores) > 1 &&
+       (all(scores == 1) || all(scores == 0))) ||
+      length(unique(scores)) == 1) {
     conf <- 1
   } else {
-    # beta fitting
-    beta_par <- EnvStats::ebeta(predictions, method = "mle")$parameters
+    # beta fitting; scores of exactly 0 or 1, or NA, make ebeta() warn
+    beta_par <- suppressWarnings(
+      EnvStats::ebeta(scores, method = "mle")$parameters
+    )
 
-    if (predicted_df$pred_class == 1) {
+    if (pred_class == 1) {
       conf <- stats::pbeta(q = threshold,
                            shape1 = beta_par[1],
                            shape2 = beta_par[2],
